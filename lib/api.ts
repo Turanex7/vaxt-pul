@@ -1,5 +1,5 @@
 import type { CategoryId, Payment, PaymentDraft, Repeat } from './mock-data'
-import { MONTHS_LOWER, getOccurrences, startOfToday, toISO } from './format'
+import { MONTHS_LOWER, getOccurrences, parseISO, startOfToday, toISO } from './format'
 
 export interface CancelHelp {
   steps: string[]
@@ -28,8 +28,36 @@ const CATEGORY_KEYWORDS: [RegExp, CategoryId][] = [
   [/azercell|bakcell|nar|internet|tarif|citynet|telefon/i, 'telekom'],
   [/elektrik|işıq|isiq|qaz|su\b|kommunal|azərişıq|azerisiq/i, 'kommunal'],
   [/netflix|spotify|youtube|abunə|abune|premium|apple|bolt/i, 'abune'],
-  [/kirayə|kiraye|zal|idman|müqavilə|muqavile/i, 'muqavile'],
+  [/kirayə|kiraye|zal|idman|gym|üzvlük|uzvluk|müqavilə|muqavile/i, 'muqavile'],
 ]
+
+const MONTH_NAME_RE = MONTHS_LOWER.join('|')
+
+const CATEGORY_FROM_LABEL: Record<string, CategoryId> = {
+  abunələr: 'abune',
+  abuneler: 'abune',
+  abune: 'abune',
+  telekom: 'telekom',
+  kommunal: 'kommunal',
+  kredit: 'kredit',
+  'sığorta və sənədlər': 'sigorta',
+  'sigorta ve senedler': 'sigorta',
+  sigorta: 'sigorta',
+  müqavilələr: 'muqavile',
+  muqavileler: 'muqavile',
+  muqavile: 'muqavile',
+}
+
+const REPEAT_FROM_LABEL: Record<string, Repeat> = {
+  aylıq: 'monthly',
+  ayliq: 'monthly',
+  monthly: 'monthly',
+  illik: 'yearly',
+  yearly: 'yearly',
+  birdəfəlik: 'once',
+  birdefelik: 'once',
+  once: 'once',
+}
 
 function guessCategory(text: string): CategoryId {
   return CATEGORY_KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'abune'
@@ -43,14 +71,42 @@ function guessRepeat(text: string, category: CategoryId): Repeat {
 }
 
 function parseAzDate(text: string): string | null {
-  const match = text.toLocaleLowerCase('az').match(/(\d{1,2})\s+([a-zəığöşüç]+)/i)
+  const lower = text.toLocaleLowerCase('az')
+  const iso = lower.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+  const dotted = lower.match(/\b(\d{1,2})[./](\d{1,2})[./](\d{2,4})\b/)
+  if (dotted) {
+    const day = dotted[1].padStart(2, '0')
+    const month = dotted[2].padStart(2, '0')
+    const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3]
+    return `${year}-${month}-${day}`
+  }
+  const match = lower.match(new RegExp(`(\\d{1,2})\\s+(${MONTH_NAME_RE})[a-zəığöşüç]*(?:\\s+(\\d{4}))?`, 'i'))
   if (!match) return null
   const monthIndex = MONTHS_LOWER.findIndex((m) => match[2].startsWith(m.slice(0, 3)))
   if (monthIndex === -1) return null
   const today = startOfToday()
-  const date = new Date(today.getFullYear(), monthIndex, Number(match[1]))
-  if (date < today) date.setFullYear(date.getFullYear() + 1)
+  const year = match[3] ? Number(match[3]) : today.getFullYear()
+  const date = new Date(year, monthIndex, Number(match[1]))
+  if (!match[3] && date < today) date.setFullYear(date.getFullYear() + 1)
   return toISO(date)
+}
+
+function cleanPaymentName(text: string): string {
+  const monthPattern = new RegExp(
+    `\\b\\d{1,2}\\s+(${MONTH_NAME_RE})[a-zəığöşüç]*\\s*(?:\\d{4})?\\b`,
+    'gi',
+  )
+  const name = text
+    .replace(/[\d.,]+\s*(?:azn|₼|manat)/gi, ' ')
+    .replace(/(?:azn|₼|manat)\s*[\d.,]+/gi, ' ')
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+    .replace(/\b\d{1,2}[./]\d{1,2}[./]\d{2,4}\b/g, ' ')
+    .replace(monthPattern, ' ')
+    .replace(/[:\-–,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return name.slice(0, 80)
 }
 
 function parseAmount(text: string): number | null {
@@ -58,22 +114,99 @@ function parseAmount(text: string): number | null {
   return match ? Number(match[1].replace(',', '.')) : null
 }
 
-/** TODO: replace with fetch('/api/parse-text', { method: 'POST', body: JSON.stringify({ text }) }) */
-export async function parseText(text: string): Promise<PaymentDraft[]> {
-  await wait(1500)
+function normalizeCategory(value: unknown): CategoryId | null {
+  if (typeof value !== 'string') return null
+  const key = value.trim().toLocaleLowerCase('az')
+  return CATEGORY_FROM_LABEL[key] ?? null
+}
+
+function normalizeRepeat(value: unknown): Repeat | null {
+  if (typeof value !== 'string') return null
+  const key = value.trim().toLocaleLowerCase('az')
+  return REPEAT_FROM_LABEL[key] ?? null
+}
+
+function normalizeDate(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null
+}
+
+function addCalendarMonths(date: Date, months: number): Date {
+  const day = date.getDate()
+  const next = new Date(date.getFullYear(), date.getMonth() + months, 1)
+  const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
+  next.setDate(Math.min(day, lastDay))
+  return next
+}
+
+/** Keçmiş və ya bu günə düşən aylıq/illik tarixi növbəti ödənişə çəkir. Gələcək və birdəfəlik dəyişmir. */
+function nextDueDate(isoDate: string, repeat: Repeat): string {
+  if (repeat === 'once') return isoDate
+  const today = startOfToday()
+  let date = parseISO(isoDate)
+  if (date > today) return isoDate
+  const stepMonths = repeat === 'yearly' ? 12 : 1
+  for (let i = 0; i < 120 && date <= today; i++) {
+    date = addCalendarMonths(date, stepMonths)
+  }
+  return toISO(date)
+}
+
+function mapParseItems(items: unknown[]): PaymentDraft[] {
+  return items
+    .map((raw): PaymentDraft | null => {
+      if (!raw || typeof raw !== 'object') return null
+      const item = raw as Record<string, unknown>
+      const amount = Number(item.amount)
+      const name = typeof item.name === 'string' ? cleanPaymentName(item.name) : ''
+      const category = normalizeCategory(item.category)
+      const repeat = normalizeRepeat(item.repeat)
+      const parsedDate = normalizeDate(item.date) ?? normalizeDate(item.nextDate)
+      if (!name || !Number.isFinite(amount) || !category || !repeat || !parsedDate) return null
+      return { name, amount, category, repeat, nextDate: nextDueDate(parsedDate, repeat) }
+    })
+    .filter((x): x is PaymentDraft => x !== null)
+}
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    throw new Error(`${url} failed (${res.status})`)
+  }
+  return (await res.json()) as T
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
+
+function fallbackParseText(text: string): PaymentDraft[] {
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean)
   const parsed = lines
     .map((line): PaymentDraft | null => {
       const amount = parseAmount(line)
       if (amount === null) return null
       const category = guessCategory(line)
-      const name = line.replace(/[\d.,]+\s*(azn|₼|manat)/gi, '').replace(/[:\-–]+/g, ' ').trim().slice(0, 40)
+      const name = cleanPaymentName(line)
+      const repeat = guessRepeat(line, category)
       return {
         name: name || 'Yeni ödəniş',
         amount,
         category,
-        repeat: guessRepeat(line, category),
-        nextDate: parseAzDate(line) ?? isoFromToday(30),
+        repeat,
+        nextDate: nextDueDate(parseAzDate(line) ?? isoFromToday(30), repeat),
       }
     })
     .filter((x): x is PaymentDraft => x !== null)
@@ -86,9 +219,7 @@ export async function parseText(text: string): Promise<PaymentDraft[]> {
   ]
 }
 
-/** TODO: replace with fetch('/api/parse-receipt', { method: 'POST', body: formData }) */
-export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
-  await wait(1500)
+function fallbackParseReceipt(file: File): PaymentDraft[] {
   const fromName = file.name.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ')
   return [
     {
@@ -101,25 +232,23 @@ export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
   ]
 }
 
-/** TODO: replace with fetch('/api/parse-quick', { method: 'POST', body: JSON.stringify({ text }) }) */
-export async function parseQuick(text: string): Promise<PaymentDraft[]> {
-  await wait(1500)
+function fallbackParseQuick(text: string): PaymentDraft[] {
   const parts = text.split(',').map((p) => p.trim()).filter(Boolean)
   const category = guessCategory(text)
+  const name = cleanPaymentName(parts[0] || text)
+  const repeat = guessRepeat(text, category)
   return [
     {
-      name: parts[0] || 'Yeni ödəniş',
+      name: name || 'Yeni ödəniş',
       amount: parseAmount(text) ?? 0,
       category,
-      repeat: guessRepeat(text, category),
-      nextDate: parseAzDate(text) ?? isoFromToday(30),
+      repeat,
+      nextDate: nextDueDate(parseAzDate(text) ?? isoFromToday(30), repeat),
     },
   ]
 }
 
-/** TODO: replace with fetch('/api/cancel-help', { method: 'POST', body: JSON.stringify({ item }) }) */
-export async function generateCancelHelp(item: Payment): Promise<CancelHelp> {
-  await wait(1500)
+function fallbackCancelHelp(item: Payment): CancelHelp {
   const provider = item.provider ?? item.name
   const isOnline = item.category === 'abune'
 
@@ -153,6 +282,53 @@ Hörmətlə,
 [Tarix]`
 
   return { steps, letter }
+}
+
+export async function parseText(text: string): Promise<PaymentDraft[]> {
+  try {
+    const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
+    return mapParseItems(data.items ?? [])
+  } catch {
+    return fallbackParseText(text)
+  }
+}
+
+export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
+  try {
+    const imageBase64 = await fileToBase64(file)
+    const data = await postJson<{ items?: unknown[] }>('/api/parse', {
+      imageBase64,
+      mimeType: file.type || 'image/jpeg',
+    })
+    return mapParseItems(data.items ?? [])
+  } catch {
+    return fallbackParseReceipt(file)
+  }
+}
+
+export async function parseQuick(text: string): Promise<PaymentDraft[]> {
+  try {
+    const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
+    return mapParseItems(data.items ?? [])
+  } catch {
+    return fallbackParseQuick(text)
+  }
+}
+
+export async function generateCancelHelp(item: Payment): Promise<CancelHelp> {
+  try {
+    const data = await postJson<CancelHelp>('/api/cancel', {
+      name: item.name,
+      amount: item.amount,
+      category: item.category,
+    })
+    const steps = Array.isArray(data.steps) ? data.steps.map(String).filter(Boolean) : []
+    const letter = typeof data.letter === 'string' ? data.letter.trim() : ''
+    if (steps.length === 0 || !letter) return fallbackCancelHelp(item)
+    return { steps, letter }
+  } catch {
+    return fallbackCancelHelp(item)
+  }
 }
 
 /** TODO: replace with fetch('/api/weekly-summary') */
