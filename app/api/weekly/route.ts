@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 Vacib qaydalar:
 - Heç bir say, cəm, gün fərqi və ya məbləği özün hesablamamalısan.
 - Yalnız verilən stats obyektindəki faktlardan istifadə et; yeni rəqəm və ödəniş uydurma.
-- title qısa olsun, məsələn: "Bu həftə 5 ödəniş, 1 son tarix var."
+- title qısa olsun, məsələn: "Növbəti 7 gündə 5 ödəniş, 1 son tarix var."
 - body 1–2 cümləlik praktik tövsiyə olsun.
 - YALNIZ bu JSON formatında cavab ver: {"title":"...","body":"..."}
 

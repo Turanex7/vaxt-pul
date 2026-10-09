@@ -31,8 +31,32 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="az" className={`${inter.variable} bg-background`}>
+    <html
+      lang="az"
+      className={`${inter.variable} bg-background`}
+      suppressHydrationWarning
+    >
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+        (function () {
+          function clean() {
+            document
+              .querySelectorAll('[bis_skin_checked]')
+              .forEach(function (el) { el.removeAttribute('bis_skin_checked'); });
+          }
+          clean();
+          new MutationObserver(clean).observe(document.documentElement, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['bis_skin_checked'],
+          });
+        })();
+      `,
+          }}
+        />
         {children}
         <Toaster position="top-center" />
         {process.env.NODE_ENV === 'production' && <Analytics />}

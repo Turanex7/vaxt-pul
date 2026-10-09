@@ -1,5 +1,12 @@
 # PROGRESS.md — PayPulse
 
+## 2026-10-09 — Radar, xülasə və header düzəlişləri
+- Pul kartının başlığı “Bu ayın qalan ödənişləri” oldu və cəm Math.round olmadan `formatAmount` ilə göstərilir; təqvim cəmi ilə eyni `559,77 AZN` alınır.
+- Radar ağır həftə artıq növbəti 30 gün daxilində hər başlanğıc günü üçün sürüşən 7 günlük pəncərəni hesablayır, pəncərəni 30 günlük sərhəddə kəsir. Cari seed-də literal 30 günlük qayda üzrə ən böyük pəncərə `31 oktyabr – 6 noyabr, 545 AZN` olur (Kirayə 400 + Taksit 85 + zal 60). Göstərilən gözlənti `15–21 oktyabr, 447,80 AZN` həmin qayda ilə uyğun gəlmir; bu aralıqda cəm doğrudan 447,80 AZN-dir, amma sonrakı 30 günlük pəncərələrdə daha böyük cəm var.
+- Netflix duplicate cütü silindi; Spotify Premium + YouTube Premium cütü saxlanır və illik qənaət cəm − maksimum məbləğdən hesablanır. Dəyişkən ödəniş kartı sarı xəbərdarlıq tonu, “Dəyişib” etiketi və “Elektrik ödənişi artıb” başlığını alır. Radar-dan təkrarlanan Növbəti 7 gün kartı çıxarıldı.
+- Həftəlik xülasənin lokal mətni və Gemini promptundakı başlıq “Növbəti 7 gündə…” oldu. What-if siyahısına sağ padding və Switch-ə `shrink-0` verildi. Eyni provider adı cədvəldə təkrarlanmır. Header loqosu 52×46-dan 62×55-ə böyüdü; header və main konteynerdə `mx-auto` / `max-w-6xl` artıq mövcud idi və saxlanıldı.
+- Brauzer DOM-da yeni Radar başlığı/etiketləri, 7 günlük Radar kartının yoxluğu, pul/təqvim cəmi və həftəlik başlıq yoxlanıldı; konsol error-u boş idi. `npm run build` Turbopack-in sandbox port bind xətası ilə dayandı; `npm run build -- --webpack` və `npx tsc --noEmit` uğurlu oldu.
+
 ## 2026-10-09 — Hydration audit və sabit tarix/məbləğlər
 - Axtarış nəticələri: render zamanı `Math.random`, `Date.now`, `crypto.randomUUID`, `Intl.*`, `toLocaleString/DateString/TimeString`, `typeof window`, `sessionStorage` tapılmadı. `new Date` işlənən UI yerləri `today`-dən törəyən təqvim/xülasə hesablarıdır; cari saat oxunuşu yalnız `startOfToday()`-dədir və UI onu Dashboard-dan sonrakı effect vasitəsilə alır. UUID yalnız ödəniş/API/ICS əməliyyatlarında yaranır; localStorage Dashboard effect-ində və reset handler-indədir; clipboard `navigator` yalnız düymə handler-indədir.
 - `toLocaleString()` chart tooltip-ində idi, `toLocaleLowerCase()` isə ay və Radar/mətn normallaşdırmasında idi. Chart məbləği indi `formatAmount`-dan keçir; ay adları sabit Azərbaycan massivindən, lower-case isə locale-siz `toLowerCase()` ilə alınır.

@@ -85,7 +85,9 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
                   <tr key={p.id} className="transition-colors hover:bg-muted/50">
                     <td className="px-6 py-3.5">
                       <p className="font-medium">{p.name}</p>
-                      {p.provider && <p className="text-sm text-muted-foreground">{p.provider}</p>}
+                      {p.provider && p.provider.trim().toLowerCase() !== p.name.trim().toLowerCase() && (
+                        <p className="text-sm text-muted-foreground">{p.provider}</p>
+                      )}
                     </td>
                     <td className="px-3 py-3.5"><CategoryBadge category={p.category} /></td>
                     <td className="px-3 py-3.5 text-right font-semibold whitespace-nowrap tabular-nums">{formatAmount(p.amount)}</td>

@@ -364,7 +364,7 @@ export async function getWeeklySummary(payments: Payment[], today: Date): Promis
       ? { name: nearestDeadline.payment.name, daysLeft: daysUntil(nearestDeadline.date, today) }
       : null,
   }
-  const fallbackHeadline = `Bu həftə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`
+  const fallbackHeadline = `Növbəti 7 gündə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`
   const fallbackBody = biggest
     ? `${formatAmount(stats.total)} məbləğini həftəlik büdcəndə nəzərdə saxla. Ən böyük ödəniş ${biggest.payment.name} üçündür (${formatAmount(biggest.payment.amount)})${nearestDeadline ? `, ${nearestDeadline.payment.name} üçün isə ${daysUntil(nearestDeadline.date, today)} gün qalıb` : ''}.`
     : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.'

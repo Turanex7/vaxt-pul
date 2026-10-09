@@ -45,7 +45,7 @@ export function WhatIfSimulator({ payments, highlightIds }: WhatIfSimulatorProps
         {candidates.length === 0 ? (
           <p className="text-muted-foreground">Söndürülə bilən abunə yoxdur.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-border pr-2">
             {candidates.map((p) => {
               const active = !disabledIds.has(p.id)
               const highlighted = highlightIds.includes(p.id)
@@ -72,6 +72,7 @@ export function WhatIfSimulator({ payments, highlightIds }: WhatIfSimulatorProps
                     id={switchId}
                     checked={active}
                     onCheckedChange={(checked) => toggle(p.id, checked)}
+                    className="shrink-0"
                     aria-label={`${p.name} aktiv`}
                   />
                 </li>

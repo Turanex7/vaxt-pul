@@ -71,6 +71,7 @@ function RadarCard({
 }: { insight: Insight } & Omit<RadarSectionProps, 'insights'>) {
   const Icon = ICONS[insight.kind]
   const style = SEVERITY_STYLES[insight.severity]
+  const label = insight.kind === 'spike' ? 'Dəyişib' : style.label
 
   return (
     <article
@@ -85,7 +86,7 @@ function RadarCard({
         </span>
         <div className="min-w-0">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {style.label}
+            {label}
           </p>
           <h3 className="text-lg leading-snug font-semibold text-balance">{insight.title}</h3>
         </div>

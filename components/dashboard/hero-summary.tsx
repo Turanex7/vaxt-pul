@@ -34,9 +34,9 @@ export function HeroSummary({ payments, today }: { payments: Payment[]; today: D
           <span className="text-base font-medium">Pul</span>
         </div>
         <div>
-          <p className="text-lg text-primary-foreground/80">Bu ay</p>
+          <p className="text-lg text-primary-foreground/80">Bu ayın qalan ödənişləri</p>
           <p className="text-5xl font-semibold tracking-tight tabular-nums md:text-6xl">
-            {formatAmount(Math.round(thisMonth))}
+            {formatAmount(thisMonth)}
           </p>
         </div>
         <p className="rounded-xl bg-primary-foreground/10 px-4 py-3 text-base">

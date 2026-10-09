@@ -21,7 +21,7 @@ export function WeeklySummary({ payments, today }: { payments: Payment[]; today:
     const stats = getNext7DaysStats(debouncedPayments, today)
     const biggest = [...stats.items].sort((a, b) => b.payment.amount - a.payment.amount)[0]
     return {
-      headline: `Bu həftə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`,
+      headline: `Növbəti 7 gündə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`,
       text: biggest
         ? `${formatAmount(stats.total)} məbləğini həftəlik büdcəndə nəzərdə saxla. Ən böyük ödəniş ${biggest.payment.name} üçündür (${formatAmount(biggest.payment.amount)}).`
         : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.',
