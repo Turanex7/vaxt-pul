@@ -2,26 +2,26 @@
 
 ## B. HAZIRKI VƏZİYYƏT
 
-**İndi nə üzərində işlənir:** Bug: təsdiq pəncərəsində növbəti tarix (məs. 09.11.2026) düzgün, amma təsdiqdən sonra siyahı və «Növbəti 7 gün» bu günü (9 oktyabr) göstərir.
+**İndi nə üzərində işlənir:** Radar kartlarını `mockInsights`-dan `payments` üzərindən hesablanan dinamik insight-lərə keçirmək (`lib/radar.ts`). AI yoxdur.
 
-**Ən son tamamlanan addım (əvvəlki):** `nextDueDate` + prompt.
+**Ən son tamamlanan addım:** Təsdiqdən sonra tarix bug-ı düzəldilmişdi.
 
-**Tapılan səbəb (hipotez, düzəldilir):** `dashboard.addDrafts` `{ ...d, id }` — `nextDate`-i dəyişmir. «Növbəti 7 gün» (`HeroSummary`) `getOccurrences`-dən istifadə edir; `lib/format.ts` `k = -24`-dən başlayır, ona görə `nextDate=2026-11-09` aylıq ödəniş üçün `k=-1` → 2026-10-09 (bu gün) həftə pəncərəsinə düşür. Radar `insights` mock-dur, `nextDate` oxumur.
-
-**Yarımçıq:** `getOccurrences` geriyə getməməlidir (`k>=0`); `addDrafts` `d.nextDate`-i açıq map etməlidir.
+**Yarımçıq:** `lib/radar.ts` yoxdur; `dashboard.tsx` hələ `useState(mockInsights)` saxlayır.
 
 **Növbəti addımlar:**
-1. `getOccurrences`: yalnız `nextDate`-dən etibarən (k=0…).
-2. `addDrafts`: `nextDate: d.nextDate`, yenidən hesab etmə.
+1. `lib/radar.ts` — `buildRadarInsights(payments)`: deadline (≤14 gün / sigorta), duplicate abunə, 30 günlük yük, növbəti 7 gün.
+2. `dashboard.tsx` — insights = `useMemo(() => buildRadarInsights(payments), [payments])`. RadarSection UI dəyişmə.
 3. `npm run build`.
 4. PROGRESS.md yenilə.
 
-**Ən son tamamlanan addım:** Təkrarlanan ödənişlərdə keçmiş/bugünkü `date` növbəti dövrə çəkilir; Gemini-yə ödəniş günü vs növbəti tarix izahı əlavə olundu.
+**Ən son tamamlanan addım:** `getOccurrences` geriyə occurrence yaratmır; `addDrafts` təsdiq pəncərəsinin `nextDate`-ini olduğu kimi yazır. `npm run build` uğurlu.
+
+**Tapılan səbəb:** `addDrafts` tarixi əvəz etmirdi. «Növbəti 7 gün» (`HeroSummary`) `getOccurrences(payments, today, in7)` istifadə edir; `k=-24` ilə `nextDate=2026-11-09` üçün `k=-1` → 2026-10-09 həftə kartına və təqvimə düşürdü. Siyahı `p.nextDate` oxuyur (eyni sahə). Radar `insights` mock-dur, ödəniş `nextDate` oxumur.
 
 **Yarımçıq qalan iş:** Yoxdur (bu tapşırıq üçün).
 
 **Növbəti addımlar (istəyə bağlı):**
-1. Məs. aylıq + bu gün/keçmiş tarix parse et — UI-də növbəti ay görünməlidir; gələcək və birdəfəlik dəyişməməlidir.
+1. Əlavə et → aylıq, təsdiqdə 09.11.2026 → siyahıda 9 noyabr, «Növbəti 7 gün»-də olmamalı.
 2. `getWeeklySummary` hələ stub-dur.
 
 **`nextDueDate` davranışı (`lib/api.ts`):**
@@ -86,6 +86,14 @@
 ---
 
 ## C. İş jurnalı
+
+### 2026-10-09 ~15:00 — Təsdiqdən sonra köhnə tarix
+- **Nə tapıldı:** Təsdiq `d.nextDate`-i dəyişmirdi. «Növbəti 7 gün» `getOccurrences`-də `k=-24`-dən geriyə gedirdi → növbəti ayın ödənişi bu gün kimi görünürdü.
+- **Dəyişdi:**
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/format.ts` — `getOccurrences` döngüsü `k = 0` (yalnız `nextDate` və sonrası).
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/components/dashboard/dashboard.tsx` — `addDrafts`/`savePayment` `nextDate: d.nextDate` açıq map (yenidən hesab yox).
+- **Radar:** `mockInsights`, ödəniş `nextDate` oxumur. Siyahı və həftə kartı eyni `nextDate` / ondan törəmə occurrence.
+- **Build:** `npm run build` exit 0.
 
 ### 2026-10-09 ~14:28 — nextDueDate post-process
 - **Nə / niyə:** Mətndəki tarix tez-tez artıq ödənilmiş gündür; UI növbəti ödənişi göstərməlidir.

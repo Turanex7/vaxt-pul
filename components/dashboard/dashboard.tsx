@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { type Insight, type Payment, type PaymentDraft, mockInsights, mockPayments } from '@/lib/mock-data'
+import { type Insight, type Payment, type PaymentDraft, mockPayments } from '@/lib/mock-data'
+import { buildRadarInsights } from '@/lib/radar'
 import { AddPaymentDialog } from './add-payment-dialog'
 import { AppHeader } from './app-header'
 import { CancelAssistantDialog } from './cancel-assistant-dialog'
@@ -17,7 +18,7 @@ import { WhatIfSimulator } from './what-if-simulator'
 
 export function Dashboard() {
   const [payments, setPayments] = useState<Payment[]>(mockPayments)
-  const [insights, setInsights] = useState<Insight[]>(mockInsights)
+  const insights = useMemo(() => buildRadarInsights(payments), [payments])
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Payment | null>(null)
   const [cancelling, setCancelling] = useState<Payment | null>(null)
@@ -67,8 +68,7 @@ export function Dashboard() {
     document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const recognize = (insight: Insight, recognized: boolean) => {
-    setInsights((prev) => prev.filter((i) => i.id !== insight.id))
+  const recognize = (_insight: Insight, recognized: boolean) => {
     if (recognized) {
       toast.success('Təşəkkürlər! Bu ödənişi tanınmış kimi qeyd etdik.')
     } else {
