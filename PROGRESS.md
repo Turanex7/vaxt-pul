@@ -4,7 +4,7 @@
 - `lib/format.ts`: əlavə edilən `getNext7DaysStats(payments, today)` bütün occurrence-ları (deadline daxil) sayır və cəm, deadline sayı, elementləri qaytarır.
 - `HeroSummary`, Radar növbəti 7 gün kartı və `WeeklySummary` eyni helper-in nəticəsini oxuyur; HeroSummary siyahısı bütün elementləri göstərir.
 - `lib/radar.ts`: yük həftələrinin hamısı tam 7 gündür; son gün başlanğıcdan 6 gün sonradır, cəm də həmin pəncərədən hesablanır.
-- Build: `npm run build` ilə yoxlanılır.
+- Build: `npm run build -- --webpack` uğurlu. Sadə `npm run build` Turbopack sandbox-da port bind xətası ilə dayanır; webpack variantı build-i tamamladı.
 
 ## B. HAZIRKI VƏZİYYƏT
 
