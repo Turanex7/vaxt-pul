@@ -2,11 +2,10 @@ import { CalendarClock, Wallet } from 'lucide-react'
 import {
   daysLeftLabel,
   daysUntil,
-  formatAZN,
+  formatAmount,
   formatDayMonth,
   getNext7DaysStats,
   getOccurrences,
-  startOfToday,
   sumOccurrences,
 } from '@/lib/format'
 import type { Payment } from '@/lib/mock-data'
@@ -14,8 +13,7 @@ import { cn } from '@/lib/utils'
 import { CategoryDot } from './category-badge'
 import { Panel } from './panel'
 
-export function HeroSummary({ payments }: { payments: Payment[] }) {
-  const today = startOfToday()
+export function HeroSummary({ payments, today }: { payments: Payment[]; today: Date }) {
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
   const in30 = new Date(today)
   in30.setDate(in30.getDate() + 29)
@@ -38,12 +36,12 @@ export function HeroSummary({ payments }: { payments: Payment[] }) {
         <div>
           <p className="text-lg text-primary-foreground/80">Bu ay</p>
           <p className="text-5xl font-semibold tracking-tight tabular-nums md:text-6xl">
-            {formatAZN(thisMonth, { round: true })}
+            {formatAmount(Math.round(thisMonth))}
           </p>
         </div>
         <p className="rounded-xl bg-primary-foreground/10 px-4 py-3 text-base">
           Növbəti 30 gündə:{' '}
-          <strong className="font-semibold tabular-nums">{formatAZN(next30, { round: true })}</strong>
+          <strong className="font-semibold tabular-nums">{formatAmount(next30)}</strong>
         </p>
       </Panel>
 
@@ -53,14 +51,14 @@ export function HeroSummary({ payments }: { payments: Payment[] }) {
           <span className="text-base font-medium">Vaxt</span>
         </div>
         <p className="text-2xl font-semibold tracking-tight text-balance">
-          Növbəti 7 gün: {week.count} ödəniş, {week.deadlineCount} son tarix · {formatAZN(week.total, { round: true })}
+          Növbəti 7 gün: {week.count} ödəniş, {week.deadlineCount} son tarix · {formatAmount(week.total)}
         </p>
         {week.count === 0 ? (
           <p className="text-muted-foreground">Bu həftə heç bir ödəniş yoxdur.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
             {week.items.map(({ payment, date }) => {
-              const days = daysUntil(date)
+              const days = daysUntil(date, today)
               return (
                 <li key={`${payment.id}-${date.getTime()}`} className="flex items-center gap-3 py-2.5">
                   <CategoryDot category={payment.category} />
@@ -74,7 +72,7 @@ export function HeroSummary({ payments }: { payments: Payment[] }) {
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDayMonth(date)} · {formatAZN(payment.amount)}
+                      {formatDayMonth(date)} · {formatAmount(payment.amount)}
                     </p>
                   </div>
                   <span

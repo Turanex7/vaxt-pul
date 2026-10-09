@@ -1,6 +1,6 @@
 'use client'
 
-import { Ellipsis, FileX2, Inbox, Pencil, RefreshCw, Trash2 } from 'lucide-react'
+import { CalendarPlus, Check, Ellipsis, FileX2, Inbox, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,22 +16,25 @@ import {
   REPEAT_LABELS,
   daysLeftLabel,
   daysUntil,
-  formatAZN,
+  formatAmount,
   formatDayMonth,
 } from '@/lib/format'
 import type { CategoryId, Payment } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { buildIcs } from '@/lib/ics'
 import { CategoryBadge, CategoryDot } from './category-badge'
 import { Panel, SectionHeading } from './panel'
 
 interface PaymentsListProps {
   payments: Payment[]
+  today: Date
   onEdit: (payment: Payment) => void
   onCancelHelp: (payment: Payment) => void
   onDelete: (payment: Payment) => void
+  onMarkPaid: (payment: Payment) => void
 }
 
-export function PaymentsList({ payments, onEdit, onCancelHelp, onDelete }: PaymentsListProps) {
+export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, onMarkPaid }: PaymentsListProps) {
   const [filter, setFilter] = useState<CategoryId | 'all'>('all')
   const visible = payments
     .filter((p) => filter === 'all' || p.category === filter)
@@ -85,12 +88,12 @@ export function PaymentsList({ payments, onEdit, onCancelHelp, onDelete }: Payme
                       {p.provider && <p className="text-sm text-muted-foreground">{p.provider}</p>}
                     </td>
                     <td className="px-3 py-3.5"><CategoryBadge category={p.category} /></td>
-                    <td className="px-3 py-3.5 text-right font-semibold whitespace-nowrap tabular-nums">{formatAZN(p.amount)}</td>
+                    <td className="px-3 py-3.5 text-right font-semibold whitespace-nowrap tabular-nums">{formatAmount(p.amount)}</td>
                     <td className="px-3 py-3.5 whitespace-nowrap">{formatDayMonth(p.nextDate)}</td>
                     <td className="px-3 py-3.5">{REPEAT_LABELS[p.repeat]}</td>
-                    <td className="px-3 py-3.5"><StatusBadge payment={p} /></td>
+                    <td className="px-3 py-3.5"><StatusBadge payment={p} today={today} /></td>
                     <td className="px-3 py-3.5">
-                      <RowMenu payment={p} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} />
+                      <RowMenu payment={p} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
                     </td>
                   </tr>
                 ))}
@@ -103,17 +106,17 @@ export function PaymentsList({ payments, onEdit, onCancelHelp, onDelete }: Payme
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold">{p.name}</p>
-                      <p className="font-semibold whitespace-nowrap tabular-nums">{formatAZN(p.amount)}</p>
+                      <p className="font-semibold whitespace-nowrap tabular-nums">{formatAmount(p.amount)}</p>
                     </div>
                     <p className="mt-0.5 text-muted-foreground">
                       {formatDayMonth(p.nextDate)} · {REPEAT_LABELS[p.repeat]}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <CategoryBadge category={p.category} />
-                      <StatusBadge payment={p} />
+                      <StatusBadge payment={p} today={today} />
                     </div>
                   </div>
-                  <RowMenu payment={p} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} />
+                  <RowMenu payment={p} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
                 </li>
               ))}
             </ul>
@@ -150,8 +153,8 @@ function FilterChip({
   )
 }
 
-function StatusBadge({ payment }: { payment: Payment }) {
-  const days = daysUntil(payment.nextDate)
+function StatusBadge({ payment, today }: { payment: Payment; today: Date }) {
+  const days = daysUntil(payment.nextDate, today)
   let label = daysLeftLabel(days)
   let tone = 'bg-muted text-muted-foreground'
 
@@ -174,7 +177,23 @@ function StatusBadge({ payment }: { payment: Payment }) {
   )
 }
 
-function RowMenu({ payment, onEdit, onCancelHelp, onDelete }: { payment: Payment } & Omit<PaymentsListProps, 'payments'>) {
+function RowMenu({ payment, onEdit, onCancelHelp, onDelete, onMarkPaid }: { payment: Payment } & Omit<PaymentsListProps, 'payments' | 'today'>) {
+  const addToCalendar = () => {
+    const fileName = payment.name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[əƏ]/g, 'e')
+      .replace(/[^a-zA-Z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'odenis'
+    const blob = new Blob([buildIcs(payment)], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${fileName}.ics`
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -193,7 +212,15 @@ function RowMenu({ payment, onEdit, onCancelHelp, onDelete }: { payment: Payment
           {payment.autoRenew ? <RefreshCw aria-hidden="true" /> : <FileX2 aria-hidden="true" />}
           Ləğv köməkçisi
         </DropdownMenuItem>
+        <DropdownMenuItem className="py-2 text-base" onClick={addToCalendar}>
+          <CalendarPlus aria-hidden="true" />
+          Təqvimə əlavə et
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem className="py-2 text-base" onClick={() => onMarkPaid(payment)}>
+          <Check aria-hidden="true" />
+          Ödənildi
+        </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" className="py-2 text-base" onClick={() => onDelete(payment)}>
           <Trash2 aria-hidden="true" />
           Sil

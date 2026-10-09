@@ -53,17 +53,18 @@ export interface Insight {
   amount?: number
 }
 
-function isoFromToday(offsetDays: number): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + offsetDays)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+export function createMockPayments(today: Date): Payment[] {
+  const isoFromToday = (offsetDays: number): string => {
+    const d = new Date(today)
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + offsetDays)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
 
-export const mockPayments: Payment[] = [
+  return [
   { id: 'netflix', name: 'Netflix', provider: 'Netflix', category: 'abune', amount: 9.99, nextDate: isoFromToday(2), repeat: 'monthly', autoRenew: true },
   { id: 'youtube', name: 'YouTube Premium', provider: 'Google', category: 'abune', amount: 11.99, nextDate: isoFromToday(16), repeat: 'monthly', autoRenew: true },
   { id: 'spotify', name: 'Spotify Premium', provider: 'Spotify', category: 'abune', amount: 9.99, nextDate: isoFromToday(21), repeat: 'monthly', autoRenew: true },
@@ -79,7 +80,11 @@ export const mockPayments: Payment[] = [
   { id: 'texbaxis', name: 'Texniki baxış', provider: 'DYP', category: 'sigorta', amount: 30, nextDate: isoFromToday(5), repeat: 'yearly', isDeadline: true },
   { id: 'idman', name: 'İdman zalı üzvlüyü', provider: 'Sport Life', category: 'muqavile', amount: 60, nextDate: isoFromToday(27), repeat: 'monthly', autoRenew: true },
   { id: 'kiraye', name: 'Kirayə', provider: 'Ev sahibi', category: 'muqavile', amount: 400, nextDate: isoFromToday(28), repeat: 'monthly' },
-]
+  ]
+}
+
+// Fixed dates make the server render and the first client render identical.
+export const mockPayments: Payment[] = createMockPayments(new Date(2026, 9, 9))
 
 export const mockInsights: Insight[] = [
   {

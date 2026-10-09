@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { parseQuick, parseReceipt, parseText } from '@/lib/api'
+import { getLastAiStatus, parseQuick, parseReceipt, parseText } from '@/lib/api'
 import type { PaymentDraft } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { DraftFields, isDraftValid } from './draft-fields'
@@ -23,17 +23,21 @@ interface AddPaymentDialogProps {
 export function AddPaymentDialog({ open, onOpenChange, onConfirm }: AddPaymentDialogProps) {
   const [drafts, setDrafts] = useState<PaymentDraft[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [usedFallback, setUsedFallback] = useState(false)
   const [tab, setTab] = useState('sms')
 
   const reset = () => {
     setDrafts(null)
     setLoading(false)
+    setUsedFallback(false)
   }
 
   const run = async (task: () => Promise<PaymentDraft[]>) => {
     setLoading(true)
+    setUsedFallback(false)
     try {
       setDrafts(await task())
+      setUsedFallback(getLastAiStatus() === 'fallback')
     } finally {
       setLoading(false)
     }
@@ -67,7 +71,10 @@ export function AddPaymentDialog({ open, onOpenChange, onConfirm }: AddPaymentDi
         {loading ? (
           <LoadingDrafts />
         ) : drafts ? (
-          <DraftReview drafts={drafts} onChange={setDrafts} onBack={() => setDrafts(null)} onConfirm={confirm} />
+          <>
+            {usedFallback && <FallbackNotice />}
+            <DraftReview drafts={drafts} onChange={setDrafts} onBack={() => setDrafts(null)} onConfirm={confirm} />
+          </>
         ) : (
           <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
             <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl p-1">
@@ -97,6 +104,14 @@ export function AddPaymentDialog({ open, onOpenChange, onConfirm }: AddPaymentDi
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function FallbackNotice() {
+  return (
+    <p role="status" className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">
+      AI hazırda əlçatmazdır, sadə tanıma rejimi işlədi.
+    </p>
   )
 }
 

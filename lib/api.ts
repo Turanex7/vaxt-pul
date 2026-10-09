@@ -1,5 +1,11 @@
 import type { CategoryId, Payment, PaymentDraft, Repeat } from './mock-data'
-import { MONTHS_LOWER, getOccurrences, parseISO, startOfToday, toISO } from './format'
+import { daysUntil, formatAmount, getNext7DaysStats, MONTHS_LOWER, parseISO, startOfToday, toISO } from './format'
+
+let lastAiStatus: 'ai' | 'fallback' = 'ai'
+
+export function getLastAiStatus(): 'ai' | 'fallback' {
+  return lastAiStatus
+}
 
 export interface CancelHelp {
   steps: string[]
@@ -13,8 +19,6 @@ export interface WeeklySummary {
   headline: string
   text: string
 }
-
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function isoFromToday(offsetDays: number): string {
   const d = startOfToday()
@@ -71,7 +75,7 @@ function guessRepeat(text: string, category: CategoryId): Repeat {
 }
 
 function parseAzDate(text: string): string | null {
-  const lower = text.toLocaleLowerCase('az')
+  const lower = text.toLowerCase()
   const iso = lower.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
   const dotted = lower.match(/\b(\d{1,2})[./](\d{1,2})[./](\d{2,4})\b/)
@@ -116,13 +120,13 @@ function parseAmount(text: string): number | null {
 
 function normalizeCategory(value: unknown): CategoryId | null {
   if (typeof value !== 'string') return null
-  const key = value.trim().toLocaleLowerCase('az')
+  const key = value.trim().toLowerCase()
   return CATEGORY_FROM_LABEL[key] ?? null
 }
 
 function normalizeRepeat(value: unknown): Repeat | null {
   if (typeof value !== 'string') return null
-  const key = value.trim().toLocaleLowerCase('az')
+  const key = value.trim().toLowerCase()
   return REPEAT_FROM_LABEL[key] ?? null
 }
 
@@ -287,8 +291,11 @@ Hörmətlə,
 export async function parseText(text: string): Promise<PaymentDraft[]> {
   try {
     const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
-    return mapParseItems(data.items ?? [])
+    const items = mapParseItems(data.items ?? [])
+    lastAiStatus = 'ai'
+    return items
   } catch {
+    lastAiStatus = 'fallback'
     return fallbackParseText(text)
   }
 }
@@ -300,8 +307,11 @@ export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
       imageBase64,
       mimeType: file.type || 'image/jpeg',
     })
-    return mapParseItems(data.items ?? [])
+    const items = mapParseItems(data.items ?? [])
+    lastAiStatus = 'ai'
+    return items
   } catch {
+    lastAiStatus = 'fallback'
     return fallbackParseReceipt(file)
   }
 }
@@ -309,8 +319,11 @@ export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
 export async function parseQuick(text: string): Promise<PaymentDraft[]> {
   try {
     const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
-    return mapParseItems(data.items ?? [])
+    const items = mapParseItems(data.items ?? [])
+    lastAiStatus = 'ai'
+    return items
   } catch {
+    lastAiStatus = 'fallback'
     return fallbackParseQuick(text)
   }
 }
@@ -324,32 +337,57 @@ export async function generateCancelHelp(item: Payment): Promise<CancelHelp> {
     })
     const steps = Array.isArray(data.steps) ? data.steps.map(String).filter(Boolean) : []
     const letter = typeof data.letter === 'string' ? data.letter.trim() : ''
-    if (steps.length === 0 || !letter) return fallbackCancelHelp(item)
+    if (steps.length === 0 || !letter) {
+      lastAiStatus = 'fallback'
+      return fallbackCancelHelp(item)
+    }
+    lastAiStatus = 'ai'
     return { steps, letter }
   } catch {
+    lastAiStatus = 'fallback'
     return fallbackCancelHelp(item)
   }
 }
 
-/** TODO: replace with fetch('/api/weekly-summary') */
-export async function getWeeklySummary(payments: Payment[]): Promise<WeeklySummary> {
-  await wait(900)
-  const start = startOfToday()
-  const end = new Date(start)
-  end.setDate(end.getDate() + 6)
-  const occurrences = getOccurrences(payments, start, end)
-  const deadlineCount = occurrences.filter((o) => o.payment.isDeadline).length
-  const paymentCount = occurrences.length - deadlineCount
-  const total = occurrences.reduce((acc, o) => acc + o.payment.amount, 0)
-  const biggest = [...occurrences].sort((a, b) => b.payment.amount - a.payment.amount)[0]
+export async function getWeeklySummary(payments: Payment[], today: Date): Promise<WeeklySummary> {
+  const stats = getNext7DaysStats(payments, today)
+  const biggest = [...stats.items].sort((a, b) => b.payment.amount - a.payment.amount)[0]
+  const nearestDeadline = stats.items
+    .filter(({ payment }) => payment.isDeadline)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
+  const payload = {
+    count: stats.count,
+    total: stats.total,
+    deadlineCount: stats.deadlineCount,
+    biggestPayment: biggest ? { name: biggest.payment.name, amount: biggest.payment.amount } : null,
+    nearestDeadline: nearestDeadline
+      ? { name: nearestDeadline.payment.name, daysLeft: daysUntil(nearestDeadline.date, today) }
+      : null,
+  }
+  const fallbackHeadline = `Bu həftə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`
+  const fallbackBody = biggest
+    ? `${formatAmount(stats.total)} məbləğini həftəlik büdcəndə nəzərdə saxla. Ən böyük ödəniş ${biggest.payment.name} üçündür (${formatAmount(biggest.payment.amount)})${nearestDeadline ? `, ${nearestDeadline.payment.name} üçün isə ${daysUntil(nearestDeadline.date, today)} gün qalıb` : ''}.`
+    : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.'
 
-  return {
-    paymentCount,
-    deadlineCount,
-    total,
-    headline: `Bu həftə ${paymentCount} ödəniş, ${deadlineCount} son tarix var.`,
-    text: biggest
-      ? `Ən böyük məbləğ ${biggest.payment.name} üçündür (${biggest.payment.amount} AZN). Hesabında həftə ərzində ən azı ${Math.ceil(total)} AZN saxlamağı tövsiyə edirik.`
-      : 'Bu həftə heç bir ödəniş yoxdur. Rahat həftə!',
+  try {
+    const result = await postJson<{ title?: unknown; body?: unknown }>('/api/weekly', { stats: payload })
+    if (typeof result.title !== 'string' || typeof result.body !== 'string' || !result.title.trim() || !result.body.trim()) {
+      throw new Error('Invalid weekly summary response')
+    }
+    return {
+      paymentCount: stats.count,
+      deadlineCount: stats.deadlineCount,
+      total: stats.total,
+      headline: result.title.trim(),
+      text: result.body.trim(),
+    }
+  } catch {
+    return {
+      paymentCount: stats.count,
+      deadlineCount: stats.deadlineCount,
+      total: stats.total,
+      headline: fallbackHeadline,
+      text: fallbackBody,
+    }
   }
 }

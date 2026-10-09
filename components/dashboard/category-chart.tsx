@@ -2,7 +2,7 @@
 
 import { Cell, Label, Pie, PieChart } from 'recharts'
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { CATEGORIES, CATEGORY_IDS, formatAZN, monthlyEquivalent } from '@/lib/format'
+import { CATEGORIES, CATEGORY_IDS, formatAmount, monthlyEquivalent } from '@/lib/format'
 import type { Payment } from '@/lib/mock-data'
 import { Panel } from './panel'
 
@@ -14,13 +14,11 @@ export function CategoryChart({ payments }: { payments: Payment[] }) {
   const data = CATEGORY_IDS.map((id) => ({
     category: id,
     label: CATEGORIES[id].label,
-    value: Math.round(
-      payments.filter((p) => p.category === id).reduce((acc, p) => acc + monthlyEquivalent(p), 0) * 100,
-    ) / 100,
+    value: payments.filter((p) => p.category === id).reduce((acc, p) => acc + Math.round(monthlyEquivalent(p) * 100), 0) / 100,
     fill: CATEGORIES[id].color,
   })).filter((d) => d.value > 0)
 
-  const total = data.reduce((acc, d) => acc + d.value, 0)
+  const total = data.reduce((acc, d) => acc + Math.round(d.value * 100), 0) / 100
 
   return (
     <Panel className="flex flex-col">
@@ -36,7 +34,7 @@ export function CategoryChart({ payments }: { payments: Payment[] }) {
           <ChartContainer
             config={chartConfig}
             className="aspect-auto size-56 shrink-0"
-            aria-label={`Kateqoriyalar üzrə xərc diaqramı, cəmi ${formatAZN(total, { round: true })}`}
+            aria-label={`Kateqoriyalar üzrə xərc diaqramı, cəmi ${formatAmount(total)}`}
           >
             <PieChart>
               <ChartTooltip
@@ -44,7 +42,7 @@ export function CategoryChart({ payments }: { payments: Payment[] }) {
                 content={<ChartTooltipContent hideLabel nameKey="category" formatter={(v, name) => (
                   <span className="flex w-full justify-between gap-3">
                     <span>{CATEGORIES[name as keyof typeof CATEGORIES]?.label}</span>
-                    <span className="font-semibold tabular-nums">{formatAZN(Number(v))}</span>
+                    <span className="font-semibold tabular-nums">{formatAmount(Number(v))}</span>
                   </span>
                 )} />}
               />
@@ -58,7 +56,7 @@ export function CategoryChart({ payments }: { payments: Payment[] }) {
                     return (
                       <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                         <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) - 6} className="fill-foreground text-2xl font-semibold">
-                          {Math.round(total)}
+                          {formatAmount(total).replace(/ AZN$/, '')}
                         </tspan>
                         <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) + 18} className="fill-muted-foreground text-sm">
                           AZN / ay
@@ -79,7 +77,7 @@ export function CategoryChart({ payments }: { payments: Payment[] }) {
                 <li key={d.category} className="flex items-center gap-3">
                   <span aria-hidden="true" className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: d.fill }} />
                   <span className="flex-1">{d.label}</span>
-                  <span className="font-semibold whitespace-nowrap tabular-nums">{formatAZN(d.value, { round: true })}</span>
+                  <span className="font-semibold whitespace-nowrap tabular-nums">{formatAmount(d.value)}</span>
                   <span className="w-11 text-right text-sm text-muted-foreground tabular-nums">
                     {Math.round((d.value / total) * 100)}%
                   </span>

@@ -1,10 +1,9 @@
 import {
   daysUntil,
-  formatAZN,
+  formatAmount,
   formatDayMonth,
   getNext7DaysStats,
   getOccurrences,
-  startOfToday,
   sumOccurrences,
   toISO,
 } from './format'
@@ -19,14 +18,13 @@ function yearlyAmount(p: Payment): number {
 }
 
 function paymentLabel(p: Payment): string {
-  return `${p.name} ${p.provider ?? ''}`.toLocaleLowerCase('az')
+  return `${p.name} ${p.provider ?? ''}`.toLowerCase()
 }
 
-export function buildRadarInsights(payments: Payment[]): Insight[] {
-  const today = startOfToday()
+export function buildRadarInsights(payments: Payment[], today: Date): Insight[] {
   const insights: Insight[] = []
 
-  insights.push(...deadlineInsights(payments))
+  insights.push(...deadlineInsights(payments, today))
   insights.push(...duplicateSubscriptionInsights(payments))
   insights.push(...heavyWeekInsight(payments, today))
   insights.push(...next7DaysInsight(payments, today))
@@ -34,9 +32,9 @@ export function buildRadarInsights(payments: Payment[]): Insight[] {
   return insights
 }
 
-function deadlineInsights(payments: Payment[]): Insight[] {
+function deadlineInsights(payments: Payment[], today: Date): Insight[] {
   const deadlines = payments
-    .map((p) => ({ p, days: daysUntil(p.nextDate) }))
+    .map((p) => ({ p, days: daysUntil(p.nextDate, today) }))
     .filter(({ p, days }) => (p.category === 'sigorta' || p.isDeadline) && days >= 0 && days <= 14)
     .sort((a, b) => a.days - b.days)
     .map(({ p, days }) => {
@@ -45,7 +43,7 @@ function deadlineInsights(payments: Payment[]): Insight[] {
         kind: 'deadline' as const,
         severity: 'warning' as const,
         title: days === 0 ? `${p.name} bu gün bitir` : `${p.name} ${days} gündən sonra bitir`,
-        description: `Vaxtında yenilə. Məbləğ ${formatAZN(p.amount)}.`,
+        description: `Vaxtında yenilə. Məbləğ ${formatAmount(p.amount)}.`,
         relatedPaymentIds: [p.id],
         amount: p.amount,
       }
@@ -58,7 +56,7 @@ function deadlineInsights(payments: Payment[]): Insight[] {
       kind: 'spike' as const,
       severity: 'urgent' as const,
       title: `${p.name} dəyişkən ödənişdir — Təcili yoxla`,
-      description: `Bu dəfə ${formatAZN(p.amount)}, əvvəl ${formatAZN(p.previousAmount!)} idi.`,
+      description: `Bu dəfə ${formatAmount(p.amount)}, əvvəl ${formatAmount(p.previousAmount!)} idi.`,
       relatedPaymentIds: [p.id],
       amount: p.amount,
     }))
@@ -99,7 +97,7 @@ function duplicateSubscriptionInsights(payments: Payment[]): Insight[] {
       kind: 'duplicate',
       severity: 'saving',
       title: `Bu ${group.items.length} abunə təkrarlanır`,
-      description: `${names} eyni tipli abunədir. Birini dayandırsan, ildə ${formatAZN(savings, { round: true })} qənaət.`,
+      description: `${names} eyni tipli abunədir. Birini dayandırsan, ildə ${formatAmount(savings)} qənaət.`,
       relatedPaymentIds: group.items.map((p) => p.id),
       amount: savings,
     })
@@ -130,7 +128,7 @@ function heavyWeekInsight(payments: Payment[], today: Date): Insight[] {
   const isHeavy = best.count >= 2 || best.total >= WEEK_LOAD_LARGE_AZN
   if (!isHeavy || best.total <= 0) return []
 
-  const rounded = formatAZN(best.total, { round: true })
+  const rounded = formatAmount(best.total)
   const title = best.weekIndex === 0
     ? `Bu həftə ${rounded} lazım olacaq`
     : `Ən yüklü həftə: ${formatDayMonth(best.start)} – ${formatDayMonth(best.end)}, ${rounded}`
@@ -157,7 +155,7 @@ function next7DaysInsight(payments: Payment[], today: Date): Insight[] {
       kind: 'forecast',
       severity: 'warning',
       title: `Növbəti 7 gündə ${stats.count} ödəniş`,
-      description: `${stats.deadlineCount} son tarix, cəmi ${formatAZN(stats.total, { round: true })}.`,
+      description: `${stats.deadlineCount} son tarix, cəmi ${formatAmount(stats.total)}.`,
       amount: stats.total,
     },
   ]

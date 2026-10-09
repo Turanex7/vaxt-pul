@@ -4,7 +4,7 @@ import { PiggyBank } from 'lucide-react'
 import { useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { useAnimatedNumber } from '@/hooks/use-animated-number'
-import { formatAZN, monthlyEquivalent } from '@/lib/format'
+import { formatAmount, monthlyEquivalent } from '@/lib/format'
 import type { Payment } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { CategoryDot } from './category-badge'
@@ -64,7 +64,7 @@ export function WhatIfSimulator({ payments, highlightIds }: WhatIfSimulatorProps
                       {p.name}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {formatAZN(p.amount)} / {p.repeat === 'yearly' ? 'il' : 'ay'}
+                      {formatAmount(p.amount)} / {p.repeat === 'yearly' ? 'il' : 'ay'}
                       {highlighted && <span className="ml-2 font-semibold text-success">Təkrarlanır</span>}
                     </span>
                   </label>
@@ -88,13 +88,13 @@ export function WhatIfSimulator({ payments, highlightIds }: WhatIfSimulatorProps
           <div>
             <p className="text-muted-foreground">İllik qənaət</p>
             <p className="text-4xl font-semibold tracking-tight text-success tabular-nums">
-              {formatAZN(Math.round(animatedYearly * 100) / 100)}
+              {formatAmount(Math.round(animatedYearly * 100) / 100)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Aylıq qənaət</p>
             <p className="text-2xl font-semibold text-foreground tabular-nums">
-              {formatAZN(Math.round(animatedMonthly * 100) / 100)}
+              {formatAmount(Math.round(animatedMonthly * 100) / 100)}
             </p>
           </div>
           {monthly === 0 && (

@@ -5,7 +5,7 @@ export const MONTHS_NOMINATIVE = [
   'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr',
 ]
 
-export const MONTHS_LOWER = MONTHS_NOMINATIVE.map((m) => m.toLocaleLowerCase('az'))
+export const MONTHS_LOWER = MONTHS_NOMINATIVE.map((m) => m.toLowerCase())
 
 export const WEEKDAYS_SHORT = ['B.e', 'Ç.a', 'Ç', 'C.a', 'C', 'Ş', 'B']
 
@@ -26,10 +26,13 @@ export const REPEAT_LABELS: Record<Repeat, string> = {
   once: 'Birdəfəlik',
 }
 
-export function formatAZN(value: number, opts: { round?: boolean } = {}): string {
-  if (opts.round) return `${Math.round(value)} AZN`
-  const text = Number.isInteger(value) ? String(value) : value.toFixed(2)
-  return `${text} AZN`
+export function formatAmount(value: number, _locale = 'az'): string {
+  const [integerPart, fractionPart] = Number.isInteger(value)
+    ? [String(value), '']
+    : value.toFixed(2).split('.')
+  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+  const formatted = fractionPart && fractionPart !== '00' ? `${grouped},${fractionPart}` : grouped
+  return `${formatted} AZN`
 }
 
 export function parseISO(iso: string): Date {
@@ -55,9 +58,11 @@ export function formatDayMonth(date: Date | string): string {
   return `${d.getDate()} ${MONTHS_LOWER[d.getMonth()]}`
 }
 
-export function daysUntil(date: Date | string): number {
+export function daysUntil(date: Date | string, today = startOfToday()): number {
   const d = typeof date === 'string' ? parseISO(date) : date
-  return Math.round((d.getTime() - startOfToday().getTime()) / 86_400_000)
+  const start = new Date(today)
+  start.setHours(0, 0, 0, 0)
+  return Math.round((d.getTime() - start.getTime()) / 86_400_000)
 }
 
 export function daysLeftLabel(days: number): string {
@@ -79,6 +84,11 @@ function addMonthsClamped(base: Date, months: number): Date {
   const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
   d.setDate(Math.min(targetDay, lastDay))
   return d
+}
+
+export function nextPaymentPeriod(nextDate: string, repeat: Repeat): string {
+  const date = parseISO(nextDate)
+  return toISO(addMonthsClamped(date, repeat === 'yearly' ? 12 : 1))
 }
 
 export interface Occurrence {
@@ -110,7 +120,8 @@ export function getOccurrences(payments: Payment[], start: Date, end: Date): Occ
 }
 
 export function sumOccurrences(list: Occurrence[]): number {
-  return list.reduce((acc, o) => acc + o.payment.amount, 0)
+  const cents = list.reduce((acc, o) => acc + Math.round(o.payment.amount * 100), 0)
+  return cents / 100
 }
 
 export function getNext7DaysStats(payments: Payment[], today: Date) {

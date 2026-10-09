@@ -1,5 +1,44 @@
 # PROGRESS.md — PayPulse
 
+## 2026-10-09 — Hydration audit və sabit tarix/məbləğlər
+- Axtarış nəticələri: render zamanı `Math.random`, `Date.now`, `crypto.randomUUID`, `Intl.*`, `toLocaleString/DateString/TimeString`, `typeof window`, `sessionStorage` tapılmadı. `new Date` işlənən UI yerləri `today`-dən törəyən təqvim/xülasə hesablarıdır; cari saat oxunuşu yalnız `startOfToday()`-dədir və UI onu Dashboard-dan sonrakı effect vasitəsilə alır. UUID yalnız ödəniş/API/ICS əməliyyatlarında yaranır; localStorage Dashboard effect-ində və reset handler-indədir; clipboard `navigator` yalnız düymə handler-indədir.
+- `toLocaleString()` chart tooltip-ində idi, `toLocaleLowerCase()` isə ay və Radar/mətn normallaşdırmasında idi. Chart məbləği indi `formatAmount`-dan keçir; ay adları sabit Azərbaycan massivindən, lower-case isə locale-siz `toLowerCase()` ilə alınır.
+- `useToday` artıq yalnız Dashboard-da çağırılır; eyni `today` Hero, Radar, təqvim, status siyahısı və həftəlik xülasəyə ötürülür. Həftəlik request key-də gün də var. İlkin tarix sabit `2026-10-09`; real gün mount-dan sonra təyin olunur. Payments ilk state-i həmişə sabit seed-dir, localStorage yalnız effect-də oxunur və JSON/Storage xətasında seed qalır; yazma `paymentsLoaded` flag-dən sonra başlayır.
+- `sumOccurrences` occurrence-ları qəpiklə toplayır, təqvim gün/ay və kateqoriya cəmləri də qəpik sərhədində yuvarlaqlanır. Seed-in cari ay üzrə xam cəmi `559.77 AZN`-dir (test sətri yoxdur); Pul xülasəsində gözlənilən tam AZN göstərmək üçün yekun ən yaxın AZN-ə yuvarlaq göstərilir (`560 AZN`). Ödəniş sətrləri və təqvim dəqiq qəpikləri saxlayır.
+- IAB brauzerində konsol boş oldu. Ödəniş əlavə edib yeniləmədən sonra saxlandığını yoxladım, Demo sıfırlama ilə test sətrini sildim və iki dəfə yenilədim; seed bərpa olundu, hydration xətası görünmədi. `npm run build` Turbopack sandbox port bind məhdudiyyəti ilə dayanır; `npm run build -- --webpack` tamamlandı. Build tipləri yoxlamadığı üçün ayrıca `npx tsc --noEmit` də işlədildi.
+
+## 2026-10-09 — Hydration və məbləğ yoxlaması
+- Dashboard ilk renderdə statik tarixli seed ödənişlərini göstərir; cari gün `useToday` hook-u ilə yalnız mount-dan sonrakı effect-də yenilənir. `localStorage` oxunuşu Dashboard effect-indədir, render və state initializer zamanı deyil.
+- Hero xülasəsi, Radar, həftəlik xülasə, təqvim və ödəniş siyahısında cari gün hook-dan ötürülür; server və ilkin client renderində eyni tarix işlənir.
+- `formatAmount` Intl formatlamasından çıxarıldı; `toFixed(2)` və regex ilə minlik boşluq/onluq vergül istifadə olunur.
+- Seed məlumatında test adlı əlavə ödəniş yoxdur. Bu ayın cəmi `559.77 AZN`: məbləğlər cəmlənəndə `9.99 + 11.99 + 9.99 + 15 + 5 + 20 + 37.80 + 22 + 8 + 210 + 180 + 30 = 559.77`; buna görə əvvəlki `.77` əlavə ödəniş deyil, real onluq məbləğlərdəndir. Göstəriş 560 AZN-ə yuvarlaqlaşdırılmadı, çünki məbləğ formatı qəpikləri saxlayır.
+- IAB brauzerində səhifəni yenidən açıb konsol yoxlanıldı: hydration xətası yoxdur. `npm run build` Turbopack sandbox-da port bind məhdudiyyəti ilə dayandı; `npm run build -- --webpack` uğurla tamamlandı.
+
+## 2026-10-09 — Amount formatı, “Ödənildi” və təqvim ixracı
+- `lib/format.ts`-də locale parametrli `formatAmount` əlavə edildi; bütün məbləğ görünüşləri (xülasələr, Radar, cədvəl, simulator, təqvim, diaqram) minlik boşluq və vergüllü onluq formatına keçirildi.
+- “Nə olar əgər?” switch-i yoxlanıldı: `shrink-0`, kəsən overflow yoxdur; toxunulmadı. Fallback nümunəsi `borodo 29azn 19 oktyabr` → `borodo` kimi yoxlanıldı.
+- Ödəniş menyusuna “Ödənildi” əlavə edildi: birdəfəlik ödəniş silinir, təkrarlanan ödənişin tarixi bir dövr irəli çəkilir və ayın son gününə uyğunlaşdırılır. Payments state update-i Radar, Vaxt, təqvim və localStorage-ə yayılır.
+- `lib/ics.ts` və menyudakı “Təqvimə əlavə et” ilə .ics ixracı; CRLF, unikal UID, all-day tarixlər, təkrar qaydaları və 1/7 günlük xatırlatmalar daxildir.
+- Header loqosu bir qədər böyüdü. `npm run build -- --webpack` uğurlu, `npx tsc --noEmit` uğurlu; standart Turbopack build port bind məhdudiyyəti ilə dayandı.
+
+## 2026-10-09 — PayPulse loqosunun yenilənməsi
+- İstifadəçinin göndərdiyi loqonun təqvim/xatırlatma nişanı təmiz fondan ayrıldı və `public/paypulse-mark.png` kimi header-də tətbiq edildi.
+- Yeni nişan `public/paypulse-icon.png` və Apple ikonunda da istifadə olunur; `app/layout.tsx` metadata ikonları yeniləndi.
+
+## 2026-10-09 — Weekly AI xülasəsi, fallback xəbərdarlığı və mərkəzləmə
+- `app/api/weekly/route.ts`: POST `{ stats }` qəbul edib `generateGeminiJson` ilə Azərbaycan dilində `{ title, body }` yaradır; prompt Gemini-yə statistikanı yenidən hesablamağı qadağan edir.
+- `lib/api.ts`: `getWeeklySummary` `getNext7DaysStats`-dan count/total/deadline, ən böyük ödəniş və ən yaxın son tarix məlumatını yığır; API xətasında eyni faktlardan lokal xülasə qurur.
+- `WeeklySummary`-də request 600ms debounce ilə gedir və SWR `keepPreviousData` əvvəlki xülasəni yeni cavab gələnədək saxlayır.
+- Parse və ləğv fallback-ləri `getLastAiStatus()` ilə görünür; iki dialoqda fallback olduqda sarı bildiriş əlavə olunur. Mövcud PaymentDraft və WeeklySummary tipləri dəyişməyib.
+- Dashboard və header konteynerlərinə `w-full` əlavə edildi; `mx-auto` və `max-w-6xl` saxlanıldı.
+- Build: standart `npm run build` Turbopack port bind xətası ilə dayanır; `npm run build -- --webpack` uğurla tamamlandı və `/api/weekly` marşrutu daxil olmaqla build edildi.
+
+## 2026-10-09 — Ödəniş state-i localStorage-də saxlama
+- Dashboard ilk renderdə seed ödənişlərindən başlayır, mount-dan sonra `paypulse:payments` açarını `useEffect` ilə oxuyur; oxu/yazı/silmə əməliyyatları `try/catch`-dədir.
+- Ödəniş əlavə etmə, redaktə və silmə dəyişiklikləri localStorage-ə yazılır. “Demo datasını sıfırla” təsdiqdən sonra açarı silir və seed ödənişləri bərpa edir.
+- “Nə olar əgər?” keçidlərinin state-i saxlanmır. Seed ödənişlərində “blabla”/“borodo” adı yoxdur; parse nümunəsində Borodo Gym Sport Life Gym olaraq dəyişdirildi.
+- Build nəticəsi: `npm run build -- --webpack` uğurlu. Standart Turbopack build sandbox-da port bind xətası ilə dayanır.
+
 ## 2026-10-09 — 7 günlük statistikanı vahidləşdirmə
 - `lib/format.ts`: əlavə edilən `getNext7DaysStats(payments, today)` bütün occurrence-ları (deadline daxil) sayır və cəm, deadline sayı, elementləri qaytarır.
 - `HeroSummary`, Radar növbəti 7 gün kartı və `WeeklySummary` eyni helper-in nəticəsini oxuyur; HeroSummary siyahısı bütün elementləri göstərir.
@@ -16,7 +55,7 @@
 
 **Növbəti addımlar (istəyə bağlı):**
 1. Dashboard-da ödəniş əlavə/sil — Radar kartları `useMemo` ilə yenilənməlidir.
-2. `getWeeklySummary` hələ stub-dur.
+2. Canlı Gemini cavabını real açarla yoxlamaq.
 
 **Radar qaydaları (`lib/radar.ts` → `buildRadarInsights`):**
 1. Deadline: `daysUntil(nextDate) <= 14` (sigorta/`isDeadline` → «bitir», digər → «ödənilir»). N<=3 `urgent`, else `warning`.
@@ -164,6 +203,6 @@
 ## D. Açıq suallar və problemlər
 
 - `GEMINI_API_KEY` `.env.local`-də var, amma dəyər real açar kimi görünmür (placeholder). Canlı parse/cancel üçün istifadəçi real açar qoymalıdır. Açar səhvdirsə UI mock fallback istifadə edir — səssiz fallback istifadəçiyə “AI işləmədi” demir.
-- `getWeeklySummary` hələ stub-dur — bu tapşırığın dairəsindən kənar.
+- `getWeeklySummary` `/api/weekly`-yə qoşuldu; Gemini əlçatmaz olsa rəqəmlərdən lokal xülasə qaytarır.
 - `npm audit` 7 high vulnerability göstərdi; bu tapşırıqda toxunulmayıb.
 - Layihə `packageManager: pnpm` elan edir, amma bu sessiyada `npm install` işlədildi (istifadəçi `npm run build` istədi). İkili lockfile ehtimalı: yoxla `package-lock.json` vs `pnpm-lock.yaml`.

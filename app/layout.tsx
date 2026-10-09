@@ -15,11 +15,7 @@ export const metadata: Metadata = {
     'Növbəti 30 gündə nə qədər ödəyəcəksən və hansı tarixi qaçırmamalısan? Abunələr, kommunal, kredit və sığorta bir yerdə.',
   generator: 'v0.app',
   icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
+    icon: '/paypulse-icon.png',
     apple: '/apple-icon.png',
   },
 }

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 const PARSE_PROMPT = `Sən ödəniş çıxarışı köməkçisisən. Verilən mətndən və/və ya qəbz şəklindən BÜTÜN ödənişləri çıxar.
 
 Hər ödəniş üçün yalnız bu sahələri doldur:
-- name: YALNIZ xidmətin və ya şirkətin qısa adı (məs. "Borodo Gym", "Netflix", "Avtomobil sığortası"). Məbləğ, tarix, valyuta (AZN, ₼, manat) və artıq sözlər name-ə DAXİL OLMASIN.
+- name: YALNIZ xidmətin və ya şirkətin qısa adı (məs. "Sport Life Gym", "Netflix", "Avtomobil sığortası"). Məbləğ, tarix, valyuta (AZN, ₼, manat) və artıq sözlər name-ə DAXİL OLMASIN.
 - amount: məbləğ, yalnız rəqəm, AZN
 - date: növbəti ödəniş tarixi, mütləq YYYY-MM-DD. Mətndəki tarix adətən ödənişin edildiyi gündür; təkrarlanan ödənişlər üçün növbəti ödəniş tarixini hesabla. Tarix yoxdursa bu günün tarixindən təxmin et.
 - category: YALNIZ bunlardan biri: "Abunələr", "Telekom", "Kommunal", "Kredit", "Sığorta və sənədlər", "Müqavilələr"
@@ -19,8 +19,8 @@ Kateqoriya qaydaları:
 - Sığorta və sənədlər: sığorta, texniki baxış
 
 Nümunə:
-Mətn: "Borodo Gym 60azn 9 oktyabr 2026"
-Cavab: {"items":[{"name":"Borodo Gym","amount":60,"date":"2026-10-09","category":"Müqavilələr","repeat":"aylıq"}]}
+Mətn: "Sport Life Gym 60azn 9 oktyabr 2026"
+Cavab: {"items":[{"name":"Sport Life Gym","amount":60,"date":"2026-10-09","category":"Müqavilələr","repeat":"aylıq"}]}
 
 Cavabı YALNIZ JSON obyekti kimi ver, başqa mətn yox:
 { "items": [ { "name": "", "amount": 0, "date": "YYYY-MM-DD", "category": "", "repeat": "" } ] }

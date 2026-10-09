@@ -1,17 +1,17 @@
 'use client'
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   CATEGORIES,
   MONTHS_NOMINATIVE,
   WEEKDAYS_SHORT,
-  formatAZN,
+  formatAmount,
   formatDayMonth,
   getOccurrences,
+  sumOccurrences,
   parseISO,
-  startOfToday,
   toISO,
   type Occurrence,
 } from '@/lib/format'
@@ -22,10 +22,14 @@ import { Panel } from './panel'
 
 const HEAVY_DAY_THRESHOLD = 100
 
-export function PaymentCalendar({ payments }: { payments: Payment[] }) {
-  const today = startOfToday()
+export function PaymentCalendar({ payments, today }: { payments: Payment[]; today: Date }) {
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const [selectedISO, setSelectedISO] = useState(() => toISO(today))
+
+  useEffect(() => {
+    setCursor(new Date(today.getFullYear(), today.getMonth(), 1))
+    setSelectedISO(toISO(today))
+  }, [today])
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
@@ -41,7 +45,7 @@ export function PaymentCalendar({ payments }: { payments: Payment[] }) {
 
   const selected = byDay.get(selectedISO) ?? []
   const selectedDate = parseISO(selectedISO)
-  const monthTotal = [...byDay.values()].flat().reduce((acc, o) => acc + o.payment.amount, 0)
+  const monthTotal = sumOccurrences([...byDay.values()].flat())
 
   const shiftMonth = (delta: number) => {
     const next = new Date(year, month + delta, 1)
@@ -61,7 +65,7 @@ export function PaymentCalendar({ payments }: { payments: Payment[] }) {
             {MONTHS_NOMINATIVE[month]} {year}
           </h3>
           <p className="text-muted-foreground">
-            Cəmi: <span className="font-semibold text-foreground tabular-nums">{formatAZN(monthTotal, { round: true })}</span>
+            Cəmi: <span className="font-semibold text-foreground tabular-nums">{formatAmount(monthTotal)}</span>
           </p>
         </div>
         <div className="flex gap-1">
@@ -87,7 +91,7 @@ export function PaymentCalendar({ payments }: { payments: Payment[] }) {
           const date = new Date(year, month, i + 1)
           const iso = toISO(date)
           const items = byDay.get(iso) ?? []
-          const total = items.reduce((acc, o) => acc + o.payment.amount, 0)
+          const total = sumOccurrences(items)
           const heavy = total >= HEAVY_DAY_THRESHOLD
           const isToday = iso === toISO(today)
           const isSelected = iso === selectedISO
@@ -98,7 +102,7 @@ export function PaymentCalendar({ payments }: { payments: Payment[] }) {
               key={iso}
               type="button"
               aria-pressed={isSelected}
-              aria-label={`${formatDayMonth(date)}${items.length ? `, ${items.length} ödəniş, ${formatAZN(total)}` : ', ödəniş yoxdur'}`}
+              aria-label={`${formatDayMonth(date)}${items.length ? `, ${items.length} ödəniş, ${formatAmount(total)}` : ', ödəniş yoxdur'}`}
               onClick={() => setSelectedISO(iso)}
               className={cn(
                 'flex aspect-square min-h-11 flex-col items-center justify-center gap-1 rounded-xl text-base tabular-nums transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
@@ -137,7 +141,7 @@ export function PaymentCalendar({ payments }: { payments: Payment[] }) {
                 <span className="font-medium">{payment.name}</span>
                 <span className="flex items-center gap-2">
                   <CategoryBadge category={payment.category} />
-                  <span className="font-semibold tabular-nums">{formatAZN(payment.amount)}</span>
+                  <span className="font-semibold tabular-nums">{formatAmount(payment.amount)}</span>
                 </span>
               </li>
             ))}

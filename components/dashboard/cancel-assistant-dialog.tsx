@@ -7,7 +7,7 @@ import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { generateCancelHelp } from '@/lib/api'
+import { generateCancelHelp, getLastAiStatus } from '@/lib/api'
 import type { Payment } from '@/lib/mock-data'
 
 interface CancelAssistantDialogProps {
@@ -26,7 +26,10 @@ export function CancelAssistantDialog({ payment, onOpenChange }: CancelAssistant
 }
 
 function CancelHelpBody({ payment }: { payment: Payment }) {
-  const { data, isLoading } = useSWR(['cancel-help', payment.id], () => generateCancelHelp(payment), {
+  const { data, isLoading } = useSWR(['cancel-help', payment.id], async () => ({
+    help: await generateCancelHelp(payment),
+    usedFallback: getLastAiStatus() === 'fallback',
+  }), {
     revalidateOnFocus: false,
   })
   const [copied, setCopied] = useState(false)
@@ -34,7 +37,7 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
   const copy = async () => {
     if (!data) return
     try {
-      await navigator.clipboard.writeText(data.letter)
+      await navigator.clipboard.writeText(data.help.letter)
       setCopied(true)
       toast.success('Məktub kopyalandı')
       setTimeout(() => setCopied(false), 2000)
@@ -65,10 +68,15 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
         </div>
       ) : (
         <>
+          {data.usedFallback && (
+            <p role="status" className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">
+              AI hazırda əlçatmazdır, sadə tanıma rejimi işlədi.
+            </p>
+          )}
           <section aria-labelledby="cancel-steps">
             <h3 id="cancel-steps" className="mb-3 text-lg font-semibold">Addımlar</h3>
             <ol className="flex flex-col gap-3">
-              {data.steps.map((step, i) => (
+              {data.help.steps.map((step, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary font-semibold text-secondary-foreground">
                     {i + 1}
@@ -88,7 +96,7 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
               </Button>
             </div>
             <pre className="rounded-xl bg-muted p-4 font-sans text-base leading-relaxed whitespace-pre-wrap">
-              {data.letter}
+              {data.help.letter}
             </pre>
           </section>
         </>

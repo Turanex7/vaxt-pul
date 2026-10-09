@@ -1,9 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { type Insight, type Payment, type PaymentDraft, mockPayments } from '@/lib/mock-data'
+import { nextPaymentPeriod, startOfToday } from '@/lib/format'
+import { createMockPayments, type Insight, type Payment, type PaymentDraft, mockPayments } from '@/lib/mock-data'
 import { buildRadarInsights } from '@/lib/radar'
+import { useToday } from '@/hooks/use-today'
 import { AddPaymentDialog } from './add-payment-dialog'
 import { AppHeader } from './app-header'
 import { CancelAssistantDialog } from './cancel-assistant-dialog'
@@ -16,13 +18,50 @@ import { RadarSection } from './radar-section'
 import { WeeklySummary } from './weekly-summary'
 import { WhatIfSimulator } from './what-if-simulator'
 
+const PAYMENTS_STORAGE_KEY = 'paypulse:payments'
+
 export function Dashboard() {
+  const today = useToday()
   const [payments, setPayments] = useState<Payment[]>(mockPayments)
-  const insights = useMemo(() => buildRadarInsights(payments), [payments])
+  const [paymentsLoaded, setPaymentsLoaded] = useState(false)
+  const skipNextStorageWrite = useRef(false)
+  const insights = useMemo(() => buildRadarInsights(payments, today), [payments, today])
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Payment | null>(null)
   const [cancelling, setCancelling] = useState<Payment | null>(null)
   const [highlightIds, setHighlightIds] = useState<string[]>([])
+
+  useEffect(() => {
+    let restored = false
+    try {
+      const stored = window.localStorage.getItem(PAYMENTS_STORAGE_KEY)
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          setPayments(parsed as Payment[])
+          restored = true
+        }
+      }
+    } catch {
+      // Invalid or unavailable storage falls back to fresh demo data.
+    } finally {
+      if (!restored) setPayments(createMockPayments(startOfToday()))
+      setPaymentsLoaded(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!paymentsLoaded) return
+    if (skipNextStorageWrite.current) {
+      skipNextStorageWrite.current = false
+      return
+    }
+    try {
+      window.localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(payments))
+    } catch {
+      // Keep the in-memory state usable when storage is unavailable.
+    }
+  }, [payments, paymentsLoaded])
 
   const addDrafts = (drafts: PaymentDraft[]) => {
     const created: Payment[] = drafts.map((d) => ({
@@ -63,6 +102,30 @@ export function Dashboard() {
     })
   }
 
+  const markPaid = (payment: Payment) => {
+    if (payment.repeat === 'once') {
+      setPayments((prev) => prev.filter((p) => p.id !== payment.id))
+      toast.success(`«${payment.name}» ödənildi və siyahıdan çıxarıldı`)
+      return
+    }
+
+    const nextDate = nextPaymentPeriod(payment.nextDate, payment.repeat)
+    setPayments((prev) => prev.map((p) => p.id === payment.id ? { ...p, nextDate } : p))
+    toast.success(`«${payment.name}» ödənildi; növbəti tarix yeniləndi`)
+  }
+
+  const resetDemoData = () => {
+    if (!window.confirm('Demo datasını sıfırlamaq və bütün dəyişiklikləri silmək istəyirsən?')) return
+    try {
+      window.localStorage.removeItem(PAYMENTS_STORAGE_KEY)
+    } catch {
+      // Reset the visible data even if browser storage is unavailable.
+    }
+    skipNextStorageWrite.current = true
+    setPayments(createMockPayments(startOfToday()))
+    toast.success('Demo datası bərpa edildi')
+  }
+
   const viewDuplicates = (insight: Insight) => {
     setHighlightIds(insight.relatedPaymentIds ?? [])
     document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -78,8 +141,8 @@ export function Dashboard() {
 
   return (
     <>
-      <AppHeader onAdd={() => setAddOpen(true)} />
-      <main className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-6 md:gap-12 md:px-6 md:py-10">
+      <AppHeader onAdd={() => setAddOpen(true)} onReset={resetDemoData} />
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 md:gap-12 md:px-6 md:py-10">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">Salam!</h1>
           <p className="mt-2 max-w-2xl text-lg text-muted-foreground text-pretty">
@@ -87,25 +150,27 @@ export function Dashboard() {
           </p>
         </div>
 
-        <HeroSummary payments={payments} />
+        <HeroSummary payments={payments} today={today} />
         <RadarSection insights={insights} onViewDuplicates={viewDuplicates} onRecognize={recognize} />
 
         <section aria-labelledby="overview-heading">
           <h2 id="overview-heading" className="mb-4 text-2xl font-semibold tracking-tight">Xərclərin mənzərəsi</h2>
           <div className="grid gap-4 lg:grid-cols-2">
             <CategoryChart payments={payments} />
-            <PaymentCalendar payments={payments} />
+            <PaymentCalendar payments={payments} today={today} />
           </div>
         </section>
 
         <PaymentsList
           payments={payments}
+          today={today}
           onEdit={setEditing}
           onCancelHelp={setCancelling}
           onDelete={deletePayment}
+          onMarkPaid={markPaid}
         />
         <WhatIfSimulator payments={payments} highlightIds={highlightIds} />
-        <WeeklySummary payments={payments} />
+        <WeeklySummary payments={payments} today={today} />
       </main>
 
       <AddPaymentDialog open={addOpen} onOpenChange={setAddOpen} onConfirm={addDrafts} />
