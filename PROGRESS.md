@@ -2,7 +2,19 @@
 
 ## B. HAZIRKI VƏZİYYƏT
 
-**İndi nə üzərində işlənir:** Bu addım **tamamlandı** (`nextDueDate` + prompt).
+**İndi nə üzərində işlənir:** Bug: təsdiq pəncərəsində növbəti tarix (məs. 09.11.2026) düzgün, amma təsdiqdən sonra siyahı və «Növbəti 7 gün» bu günü (9 oktyabr) göstərir.
+
+**Ən son tamamlanan addım (əvvəlki):** `nextDueDate` + prompt.
+
+**Tapılan səbəb (hipotez, düzəldilir):** `dashboard.addDrafts` `{ ...d, id }` — `nextDate`-i dəyişmir. «Növbəti 7 gün» (`HeroSummary`) `getOccurrences`-dən istifadə edir; `lib/format.ts` `k = -24`-dən başlayır, ona görə `nextDate=2026-11-09` aylıq ödəniş üçün `k=-1` → 2026-10-09 (bu gün) həftə pəncərəsinə düşür. Radar `insights` mock-dur, `nextDate` oxumur.
+
+**Yarımçıq:** `getOccurrences` geriyə getməməlidir (`k>=0`); `addDrafts` `d.nextDate`-i açıq map etməlidir.
+
+**Növbəti addımlar:**
+1. `getOccurrences`: yalnız `nextDate`-dən etibarən (k=0…).
+2. `addDrafts`: `nextDate: d.nextDate`, yenidən hesab etmə.
+3. `npm run build`.
+4. PROGRESS.md yenilə.
 
 **Ən son tamamlanan addım:** Təkrarlanan ödənişlərdə keçmiş/bugünkü `date` növbəti dövrə çəkilir; Gemini-yə ödəniş günü vs növbəti tarix izahı əlavə olundu.
 

@@ -99,7 +99,7 @@ export function getOccurrences(payments: Payment[], start: Date, end: Date): Occ
     const remaining = payment.installment
       ? payment.installment.total - payment.installment.paid
       : Infinity
-    for (let k = -24; k <= 36; k++) {
+    for (let k = 0; k <= 36; k++) {
       if (k >= remaining) break
       const date = addMonthsClamped(base, k * step)
       if (date > end) break

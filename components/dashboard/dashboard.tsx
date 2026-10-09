@@ -24,13 +24,33 @@ export function Dashboard() {
   const [highlightIds, setHighlightIds] = useState<string[]>([])
 
   const addDrafts = (drafts: PaymentDraft[]) => {
-    const created = drafts.map((d) => ({ ...d, id: crypto.randomUUID() }))
+    const created: Payment[] = drafts.map((d) => ({
+      id: crypto.randomUUID(),
+      name: d.name,
+      category: d.category,
+      amount: d.amount,
+      nextDate: d.nextDate,
+      repeat: d.repeat,
+    }))
     setPayments((prev) => [...prev, ...created])
     toast.success(created.length === 1 ? `«${created[0].name}» əlavə olundu` : `${created.length} ödəniş əlavə olundu`)
   }
 
   const savePayment = (id: string, draft: PaymentDraft) => {
-    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, ...draft } : p)))
+    setPayments((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              name: draft.name,
+              category: draft.category,
+              amount: draft.amount,
+              nextDate: draft.nextDate,
+              repeat: draft.repeat,
+            }
+          : p,
+      ),
+    )
     setEditing(null)
     toast.success('Dəyişikliklər yadda saxlanıldı')
   }
