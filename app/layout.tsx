@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="az" className={`${inter.variable} bg-background`}>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         <Toaster position="top-center" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
