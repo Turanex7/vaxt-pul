@@ -9,7 +9,7 @@ export function AppHeader({ onAdd }: { onAdd: () => void }) {
           <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <WalletCards className="size-5" aria-hidden="true" />
           </span>
-          <span className="text-xl font-semibold tracking-tight">Vaxt &amp; Pul</span>
+          <span className="text-xl font-semibold tracking-tight">PayPulse</span>
         </div>
         <Button onClick={onAdd}>
           <Plus data-icon="inline-start" className="size-5" aria-hidden="true" />

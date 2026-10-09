@@ -1,18 +1,23 @@
-# PROGRESS.md — Vaxt & Pul
+# PROGRESS.md — PayPulse
 
 ## B. HAZIRKI VƏZİYYƏT
 
-**İndi nə üzərində işlənir:** Radar kartlarını `mockInsights`-dan `payments` üzərindən hesablanan dinamik insight-lərə keçirmək (`lib/radar.ts`). AI yoxdur.
+**İndi nə üzərində işlənir:** Bu tapşırıq **tamamlandı** (dinamik Radar + PayPulse). `npm run build` uğurlu.
 
-**Ən son tamamlanan addım:** Təsdiqdən sonra tarix bug-ı düzəldilmişdi.
+**Ən son tamamlanan addım:** `buildRadarInsights(payments)` Radar data mənbəyidir; header/title PayPulse.
 
-**Yarımçıq:** `lib/radar.ts` yoxdur; `dashboard.tsx` hələ `useState(mockInsights)` saxlayır.
+**Yarımçıq qalan iş:** Yoxdur (bu tapşırıq üçün). `RadarSection` UI dəyişməyib. `mockInsights` `lib/mock-data.ts`-də qalıb, artıq oxunmur.
 
-**Növbəti addımlar:**
-1. `lib/radar.ts` — `buildRadarInsights(payments)`: deadline (≤14 gün / sigorta), duplicate abunə, 30 günlük yük, növbəti 7 gün.
-2. `dashboard.tsx` — insights = `useMemo(() => buildRadarInsights(payments), [payments])`. RadarSection UI dəyişmə.
-3. `npm run build`.
-4. PROGRESS.md yenilə.
+**Növbəti addımlar (istəyə bağlı):**
+1. Dashboard-da ödəniş əlavə/sil — Radar kartları `useMemo` ilə yenilənməlidir.
+2. `getWeeklySummary` hələ stub-dur.
+
+**Radar qaydaları (`lib/radar.ts` → `buildRadarInsights`):**
+1. Deadline: `daysUntil(nextDate) <= 14` (sigorta/`isDeadline` → «bitir», digər → «ödənilir»). N<=3 `urgent`, else `warning`.
+2. Duplicate abunə: Netflix+YouTube Premium (YouTube Music çıxılır); Spotify+YouTube Music. 2+ item, illik qənaət = cəm − max.
+3. 30 gün: 5×7 günlük pəncərə, ən böyük cəm; `count>=2` və ya cəm>=200 AZN → «Bu həftə X AZN lazım olacaq» (`forecast`).
+4. Növbəti 7 gün: unikal gün sayı + ödəniş sayı + cəm (`forecast`).
+5. `dashboard.tsx`: `const insights = useMemo(() => buildRadarInsights(payments), [payments])`.
 
 **Ən son tamamlanan addım:** `getOccurrences` geriyə occurrence yaratmır; `addDrafts` təsdiq pəncərəsinin `nextDate`-ini olduğu kimi yazır. `npm run build` uğurlu.
 
@@ -86,6 +91,17 @@
 ---
 
 ## C. İş jurnalı
+
+### 2026-10-09 ~15:21 — Dinamik Radar + PayPulse
+- **Nə / niyə:** Radar mock mətnləri `payments` state-indən hesablanmalı idi; sayt adı PayPulse.
+- **Yaradıldı/dəyişdi:**
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/radar.ts` — `buildRadarInsights` (deadline, duplicate cütlər, 30 gün yükü, növbəti 7 gün). AI yoxdur.
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/components/dashboard/dashboard.tsx` — `useMemo(() => buildRadarInsights(payments), [payments])`; `RadarSection` eyni qalıb.
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/components/dashboard/app-header.tsx` — «PayPulse».
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/app/layout.tsx` — `title: PayPulse — ödənişlər və son tarixlər`.
+- **Qərar:** Duplicate: YouTube Premium video qrupunda (Netflix ilə), YouTube Music musiqi qrupunda (Spotify ilə) — əvvəlki kod YouTube Premium-u Spotify ilə də cütləyirdi.
+- **Build:** `npm run build` exit 0.
+
 
 ### 2026-10-09 ~15:00 — Təsdiqdən sonra köhnə tarix
 - **Nə tapıldı:** Təsdiq `d.nextDate`-i dəyişmirdi. «Növbəti 7 gün» `getOccurrences`-də `k=-24`-dən geriyə gedirdi → növbəti ayın ödənişi bu gün kimi görünürdü.

@@ -38,6 +38,7 @@ function deadlineInsights(payments: Payment[]): Insight[] {
     .map((p) => ({ p, days: daysUntil(p.nextDate) }))
     .filter(({ days }) => days <= 14)
     .sort((a, b) => a.days - b.days)
+    .sort((a, b) => a.days - b.days)
     .map(({ p, days }) => {
       const isDoc = p.category === 'sigorta' || Boolean(p.isDeadline)
       const verb = isDoc ? 'bitir' : 'ödənilir'
@@ -75,10 +76,10 @@ function duplicateSubscriptionInsights(payments: Payment[]): Insight[] {
     },
     {
       id: 'music',
-      hint: 'YouTube Premium musiqini də əhatə edir.',
+      hint: 'Spotify və YouTube Music eyni tipli musiqi abunəsidir.',
       items: abune.filter((p) => {
         const n = paymentLabel(p)
-        return /spotify/i.test(n) || /youtube/i.test(n)
+        return /spotify/i.test(n) || (/youtube/i.test(n) && /music/i.test(n))
       }),
     },
   ]
@@ -129,14 +130,11 @@ function heavyWeekInsight(payments: Payment[], today: Date): Insight[] {
   if (!isHeavy || best.total <= 0) return []
 
   const rounded = formatAZN(best.total, { round: true })
-  const title =
-    best.weekIndex === 0
-      ? `Bu həftə ${rounded} lazım olacaq`
-      : `Ən yüklü həftədə ${rounded} lazım olacaq`
+  const title = `Bu həftə ${rounded} lazım olacaq`
   const description =
     best.weekIndex === 0
       ? `${best.count} ödəniş növbəti 7 günə düşür.`
-      : `${formatDayMonth(best.start)} – ${formatDayMonth(best.end)} arası ${best.count} ödəniş.`
+      : `Ən yüklü həftə: ${formatDayMonth(best.start)} – ${formatDayMonth(best.end)}, ${best.count} ödəniş.`
 
   return [
     {
@@ -162,8 +160,8 @@ function next7DaysInsight(payments: Payment[], today: Date): Insight[] {
       id: 'radar-next7',
       kind: 'forecast',
       severity: 'warning',
-      title: `Növbəti 7 gün: ${occ.length} ödəniş`,
-      description: `${dayCount} günə yayılıb, cəmi ${formatAZN(total, { round: true })}.`,
+      title: `Növbəti 7 gün: ${dayCount} gün`,
+      description: `${occ.length} ödəniş, cəmi ${formatAZN(total, { round: true })}.`,
       amount: total,
     },
   ]

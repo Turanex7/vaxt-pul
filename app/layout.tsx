@@ -10,7 +10,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Vaxt & Pul — ödənişlər və son tarixlər',
+  title: 'PayPulse — ödənişlər və son tarixlər',
   description:
     'Növbəti 30 gündə nə qədər ödəyəcəksən və hansı tarixi qaçırmamalısan? Abunələr, kommunal, kredit və sığorta bir yerdə.',
   generator: 'v0.app',
