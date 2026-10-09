@@ -4,6 +4,7 @@ import {
   daysUntil,
   formatAZN,
   formatDayMonth,
+  getNext7DaysStats,
   getOccurrences,
   startOfToday,
   sumOccurrences,
@@ -18,14 +19,10 @@ export function HeroSummary({ payments }: { payments: Payment[] }) {
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
   const in30 = new Date(today)
   in30.setDate(in30.getDate() + 29)
-  const in7 = new Date(today)
-  in7.setDate(in7.getDate() + 6)
 
   const thisMonth = sumOccurrences(getOccurrences(payments, today, endOfMonth))
   const next30 = sumOccurrences(getOccurrences(payments, today, in30))
-  const week = getOccurrences(payments, today, in7)
-  const deadlineCount = week.filter((o) => o.payment.isDeadline).length
-  const paymentCount = week.length - deadlineCount
+  const week = getNext7DaysStats(payments, today)
 
   return (
     <section aria-labelledby="summary-heading" className="grid gap-4 md:grid-cols-2">
@@ -56,13 +53,13 @@ export function HeroSummary({ payments }: { payments: Payment[] }) {
           <span className="text-base font-medium">Vaxt</span>
         </div>
         <p className="text-2xl font-semibold tracking-tight text-balance">
-          Növbəti 7 gün: {paymentCount} ödəniş, {deadlineCount} son tarix
+          Növbəti 7 gün: {week.count} ödəniş, {week.deadlineCount} son tarix · {formatAZN(week.total, { round: true })}
         </p>
-        {week.length === 0 ? (
+        {week.count === 0 ? (
           <p className="text-muted-foreground">Bu həftə heç bir ödəniş yoxdur.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
-            {week.slice(0, 5).map(({ payment, date }) => {
+            {week.items.map(({ payment, date }) => {
               const days = daysUntil(date)
               return (
                 <li key={`${payment.id}-${date.getTime()}`} className="flex items-center gap-3 py-2.5">

@@ -1,5 +1,11 @@
 # PROGRESS.md — PayPulse
 
+## 2026-10-09 — 7 günlük statistikanı vahidləşdirmə
+- `lib/format.ts`: əlavə edilən `getNext7DaysStats(payments, today)` bütün occurrence-ları (deadline daxil) sayır və cəm, deadline sayı, elementləri qaytarır.
+- `HeroSummary`, Radar növbəti 7 gün kartı və `WeeklySummary` eyni helper-in nəticəsini oxuyur; HeroSummary siyahısı bütün elementləri göstərir.
+- `lib/radar.ts`: yük həftələrinin hamısı tam 7 gündür; son gün başlanğıcdan 6 gün sonradır, cəm də həmin pəncərədən hesablanır.
+- Build: `npm run build` ilə yoxlanılır.
+
 ## B. HAZIRKI VƏZİYYƏT
 
 **İndi nə üzərində işlənir:** Bu tapşırıq **tamamlandı** (dinamik Radar + PayPulse). `npm run build` uğurlu.

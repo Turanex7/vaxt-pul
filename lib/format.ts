@@ -112,3 +112,17 @@ export function getOccurrences(payments: Payment[], start: Date, end: Date): Occ
 export function sumOccurrences(list: Occurrence[]): number {
   return list.reduce((acc, o) => acc + o.payment.amount, 0)
 }
+
+export function getNext7DaysStats(payments: Payment[], today: Date) {
+  const start = new Date(today)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
+  const items = getOccurrences(payments, start, end)
+  return {
+    count: items.length,
+    total: sumOccurrences(items),
+    deadlineCount: items.filter(({ payment }) => payment.isDeadline).length,
+    items,
+  }
+}
