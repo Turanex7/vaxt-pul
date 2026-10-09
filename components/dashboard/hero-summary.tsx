@@ -1,9 +1,7 @@
 import { CalendarClock, Wallet } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import {
-  daysLeftLabel,
   daysUntil,
-  formatAmount,
-  formatDayMonth,
   getNext7DaysStats,
   getOccurrences,
   sumOccurrences,
@@ -12,8 +10,13 @@ import type { Payment } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { CategoryDot } from './category-badge'
 import { Panel } from './panel'
+import { useLocalizedFormat } from '@/hooks/use-localized-format'
+import { usePaymentName } from '@/hooks/use-payment-name'
 
 export function HeroSummary({ payments, today }: { payments: Payment[]; today: Date }) {
+  const t = useTranslations()
+  const { amount, dayMonth } = useLocalizedFormat()
+  const paymentName = usePaymentName()
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
   const in30 = new Date(today)
   in30.setDate(in30.getDate() + 29)
@@ -25,36 +28,39 @@ export function HeroSummary({ payments, today }: { payments: Payment[]; today: D
   return (
     <section aria-labelledby="summary-heading" className="grid gap-4 md:grid-cols-2">
       <h2 id="summary-heading" className="sr-only">
-        Ümumi baxış
+        {t('dashboard.overview')}
       </h2>
 
       <Panel className="flex flex-col justify-between gap-6 bg-primary text-primary-foreground ring-0">
         <div className="flex items-center gap-2 text-primary-foreground/80">
           <Wallet className="size-5" aria-hidden="true" />
-          <span className="text-base font-medium">Pul</span>
+          <span className="text-base font-medium">{t('hero.money')}</span>
         </div>
         <div>
-          <p className="text-lg text-primary-foreground/80">Bu ayın qalan ödənişləri</p>
+          <p className="text-lg text-primary-foreground/80">{t('hero.remaining')}</p>
           <p className="text-5xl font-semibold tracking-tight tabular-nums md:text-6xl">
-            {formatAmount(thisMonth)}
+            {amount(thisMonth)}
           </p>
         </div>
         <p className="rounded-xl bg-primary-foreground/10 px-4 py-3 text-base">
-          Növbəti 30 gündə:{' '}
-          <strong className="font-semibold tabular-nums">{formatAmount(next30)}</strong>
+          {t('hero.next30', { amount: amount(next30) })}
         </p>
       </Panel>
 
       <Panel className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <CalendarClock className="size-5" aria-hidden="true" />
-          <span className="text-base font-medium">Vaxt</span>
+          <span className="text-base font-medium">{t('hero.time')}</span>
         </div>
         <p className="text-2xl font-semibold tracking-tight text-balance">
-          Növbəti 7 gün: {week.count} ödəniş, {week.deadlineCount} son tarix · {formatAmount(week.total)}
+          {t('hero.next7', {
+            payments: t('common.paymentCount', { count: week.count }),
+            deadlines: t('common.deadlineCount', { count: week.deadlineCount }),
+            amount: amount(week.total),
+          })}
         </p>
         {week.count === 0 ? (
-          <p className="text-muted-foreground">Bu həftə heç bir ödəniş yoxdur.</p>
+          <p className="text-muted-foreground">{t('hero.emptyWeek')}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
             {week.items.map(({ payment, date }) => {
@@ -64,15 +70,15 @@ export function HeroSummary({ payments, today }: { payments: Payment[]; today: D
                   <CategoryDot category={payment.category} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
-                      {payment.name}
+                      {paymentName(payment)}
                       {payment.isDeadline && (
                         <span className="ml-2 rounded-md bg-urgent-soft px-1.5 py-0.5 text-xs font-semibold text-urgent">
-                          Son tarix
+                          {t('hero.deadline')}
                         </span>
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDayMonth(date)} · {formatAmount(payment.amount)}
+                      {dayMonth(date)} · {amount(payment.amount)}
                     </p>
                   </div>
                   <span
@@ -81,7 +87,7 @@ export function HeroSummary({ payments, today }: { payments: Payment[]; today: D
                       days <= 2 ? 'bg-urgent-soft text-urgent' : 'bg-warning-soft text-warning',
                     )}
                   >
-                    {daysLeftLabel(days)}
+                    {days === 0 ? t('days.today') : days === 1 ? t('days.tomorrow') : days < 0 ? t('days.late', { count: Math.abs(days) }) : t('days.left', { count: days })}
                   </span>
                 </li>
               )

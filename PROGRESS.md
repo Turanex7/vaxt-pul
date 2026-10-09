@@ -1,5 +1,23 @@
 # PROGRESS.md — PayPulse
 
+## 2026-10-09 — Weekly API 500, fallback və client davamlılığı
+- Əvvəlki `PROGRESS.md` qeydi weekly xülasə üçün yalnız client fallback-i qeyd edirdi; `app/api/weekly/route.ts` Gemini xətasını 500 kimi qaytarırdı. Konfiqurasiya yoxlamasında `.env.local` və server kodunda `GEMINI_API_KEY` adının uyğunluğu təsdiqləndi; SDK istifadə olunmur, server tərəfində birbaşa `fetch` edilir.
+- Canlı POST ilə 500 səbəbi aşkarlandı: `gemini-2.5-flash` Gemini API-dən HTTP 404 qaytarırdı. Google-un hazırkı sənədlərində 2.5 modellərinə girişin məhdudlaşdırıldığı qeyd olunur. Model `gemini-3.8-flash` ilə əvəz edildi, Gemini 3-də dəstəklənməyən sampling parametrini çıxardım. Yeni modelə canlı sorğu zamanı Google API HTTP 503 qaytardı; route AZ/EN/RU fallback xülasəsini HTTP 200 ilə qaytarır. Xətanın statusu və mesajı log olunur, API açarı maskalanır.
+- `lib/api.ts`-də `postJson` fetch, HTTP və JSON xətalarını tutub `null` qaytarır. Parse, cancel və weekly client funksiyaları fallback istifadə edir, şəbəkə kəsiləndə səhifə overlay-i göstərilmir.
+- `WeeklySummary` komponentində SWR üçün `revalidateOnFocus: false`, `errorRetryCount: 2` və `onError` log-u əlavə edildi. Xəta olarsa səhifə overlay-i əvəzinə tərcümə olunan kiçik bildiriş və yenidən cəhd düyməsi görünür.
+- `.env.example` yaradıldı (`GEMINI_API_KEY`, `NEXT_PUBLIC_` prefiksi olmadan). Locale layout-dan `bis_skin_checked` atributunu dəyişən inline MutationObserver script-i silindi; hydration suppress parametri saxlanıldı.
+- Yoxlama: API açarı olmayan test POST HTTP 200 və ingilis fallback qaytardı; mövcud açarla canlı sorğu Gemini-dən HTTP 503 aldı, route isə HTTP 200 fallback qaytardı. `npm run lint`, `npx tsc --noEmit`, `npm run build` uğurlu oldu.
+
+## 2026-10-09 — Azərbaycan, İngilis və Rus dilləri
+- `next-intl`-in marşrutlaması əlavə edildi: `/az`, `/en`, `/ru`; `/` cookie/brauzer dili əsasında yönləndirilir, default `az`. Seçilmiş locale cookie-də saxlanır.
+- App Router səhifəsi və layout-u `app/[locale]/` altına köçürüldü. Locale layout `NextIntlClientProvider`, `<html lang>`, static params, hər dil üçün metadata və hreflang alternate link-ləri verir.
+- Header-ə AZ | EN | RU dil seçicisi əlavə edildi; dil dəyişəndə cari səhifədə qalır.
+- `messages/az.json`, `en.json`, `ru.json` eyni açar quruluşuna malikdir. Dashboard, Radar, cədvəl, təqvim, simulator, əlavə/redaktə/ləğv dialoqları və toast-lar tərcümə edildi. Demo ödəniş adları locale-ə görə göstərilir.
+- Radar məntiqi mətn əvəzinə message key və parametrlər qaytarır; UI məbləğ və tarixləri locale-ə uyğun formatlayır. Weekly/cancel API locale qəbul edir və Gemini-dən həmin dildə cavab istəyir; weekly və ləğv fallback-ləri də lokallaşdırılıb.
+- `formatAmount(value, locale)` AZN valyutasını saxlayır, az/ru üçün `1 104,77 AZN`, en üçün `AZN 1,104.77` formatını verir. Təqvimdə next-intl tarix formatı və UTC timezone işlənir.
+- Yeni fayllar: `proxy.ts`, `i18n/{routing,request,navigation}.ts`, `messages/{az,en,ru}.json`, `components/language-switcher.tsx`, `hooks/{use-localized-format,use-payment-name}.ts`, `lib/payment-name.ts`, `eslint.config.mjs`.
+- Yoxlama: `npm run lint` və `npx tsc --noEmit` uğurlu. `npm run build` uğurlu; `/az`, `/en`, `/ru` statik səhifələri yaradıldı.
+
 ## 2026-10-09 — Radar, xülasə və header düzəlişləri
 - Pul kartının başlığı “Bu ayın qalan ödənişləri” oldu və cəm Math.round olmadan `formatAmount` ilə göstərilir; təqvim cəmi ilə eyni `559,77 AZN` alınır.
 - Radar ağır həftə artıq növbəti 30 gün daxilində hər başlanğıc günü üçün sürüşən 7 günlük pəncərəni hesablayır, pəncərəni 30 günlük sərhəddə kəsir. Cari seed-də literal 30 günlük qayda üzrə ən böyük pəncərə `31 oktyabr – 6 noyabr, 545 AZN` olur (Kirayə 400 + Taksit 85 + zal 60). Göstərilən gözlənti `15–21 oktyabr, 447,80 AZN` həmin qayda ilə uyğun gəlmir; bu aralıqda cəm doğrudan 447,80 AZN-dir, amma sonrakı 30 günlük pəncərələrdə daha böyük cəm var.

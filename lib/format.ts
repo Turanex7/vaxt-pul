@@ -26,13 +26,15 @@ export const REPEAT_LABELS: Record<Repeat, string> = {
   once: 'Birdəfəlik',
 }
 
-export function formatAmount(value: number, _locale = 'az'): string {
+export function formatAmount(value: number, locale = 'az'): string {
   const [integerPart, fractionPart] = Number.isInteger(value)
     ? [String(value), '']
     : value.toFixed(2).split('.')
-  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-  const formatted = fractionPart && fractionPart !== '00' ? `${grouped},${fractionPart}` : grouped
-  return `${formatted} AZN`
+  const separator = locale === 'en' ? ',' : ' '
+  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, separator)
+  const decimalSeparator = locale === 'en' ? '.' : ','
+  const formatted = fractionPart && fractionPart !== '00' ? `${grouped}${decimalSeparator}${fractionPart}` : grouped
+  return locale === 'en' ? `AZN ${formatted}` : `${formatted} AZN`
 }
 
 export function parseISO(iso: string): Date {

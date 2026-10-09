@@ -2,12 +2,14 @@
 
 import { Check, Copy, Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { generateCancelHelp, getLastAiStatus } from '@/lib/api'
+import { usePaymentName } from '@/hooks/use-payment-name'
 import type { Payment } from '@/lib/mock-data'
 
 interface CancelAssistantDialogProps {
@@ -26,8 +28,12 @@ export function CancelAssistantDialog({ payment, onOpenChange }: CancelAssistant
 }
 
 function CancelHelpBody({ payment }: { payment: Payment }) {
+  const t = useTranslations('cancelDialog')
+  const toastT = useTranslations('toast')
+  const locale = useLocale() as 'az' | 'en' | 'ru'
+  const paymentName = usePaymentName()
   const { data, isLoading } = useSWR(['cancel-help', payment.id], async () => ({
-    help: await generateCancelHelp(payment),
+    help: await generateCancelHelp(payment, locale, paymentName(payment)),
     usedFallback: getLastAiStatus() === 'fallback',
   }), {
     revalidateOnFocus: false,
@@ -39,19 +45,19 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
     try {
       await navigator.clipboard.writeText(data.help.letter)
       setCopied(true)
-      toast.success('Məktub kopyalandı')
+      toast.success(toastT('copySuccess'))
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Kopyalamaq alınmadı. Mətni əl ilə seçin.')
+      toast.error(toastT('copyError'))
     }
   }
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle className="text-2xl font-semibold">Ləğv köməkçisi</DialogTitle>
+        <DialogTitle className="text-2xl font-semibold">{t('title')}</DialogTitle>
         <DialogDescription className="text-base">
-          {payment.name} — {payment.provider ?? 'xidmət'} üçün addım-addım təlimat.
+          {t('description', { name: paymentName(payment), provider: payment.provider ?? t('service') })}
         </DialogDescription>
       </DialogHeader>
 
@@ -59,7 +65,7 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
         <div className="flex flex-col gap-4" aria-busy="true">
           <p className="flex items-center gap-2 font-medium text-primary" role="status">
             <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-            AI təlimat hazırlayır…
+            {t('loading')}
           </p>
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-6 w-full" />
@@ -70,11 +76,11 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
         <>
           {data.usedFallback && (
             <p role="status" className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">
-              AI hazırda əlçatmazdır, sadə tanıma rejimi işlədi.
+              {t('fallback')}
             </p>
           )}
           <section aria-labelledby="cancel-steps">
-            <h3 id="cancel-steps" className="mb-3 text-lg font-semibold">Addımlar</h3>
+            <h3 id="cancel-steps" className="mb-3 text-lg font-semibold">{t('steps')}</h3>
             <ol className="flex flex-col gap-3">
               {data.help.steps.map((step, i) => (
                 <li key={i} className="flex gap-3">
@@ -89,10 +95,10 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
 
           <section aria-labelledby="cancel-letter">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 id="cancel-letter" className="text-lg font-semibold">Hazır məktub</h3>
+              <h3 id="cancel-letter" className="text-lg font-semibold">{t('letter')}</h3>
               <Button variant="outline" onClick={copy}>
                 {copied ? <Check data-icon="inline-start" aria-hidden="true" /> : <Copy data-icon="inline-start" aria-hidden="true" />}
-                {copied ? 'Kopyalandı' : 'Kopyala'}
+                {copied ? t('copied') : t('copy')}
               </Button>
             </div>
             <pre className="rounded-xl bg-muted p-4 font-sans text-base leading-relaxed whitespace-pre-wrap">

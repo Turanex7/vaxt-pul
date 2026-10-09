@@ -1,7 +1,5 @@
 import {
   daysUntil,
-  formatAmount,
-  formatDayMonth,
   getOccurrences,
   sumOccurrences,
   toISO,
@@ -40,8 +38,9 @@ function deadlineInsights(payments: Payment[], today: Date): Insight[] {
         id: `radar-expiry-${p.id}`,
         kind: 'deadline' as const,
         severity: 'warning' as const,
-        title: days === 0 ? `${p.name} bu gün bitir` : `${p.name} ${days} gündən sonra bitir`,
-        description: `Vaxtında yenilə. Məbləğ ${formatAmount(p.amount)}.`,
+        titleKey: days === 0 ? 'deadlineToday' : 'deadlineInDays',
+        descriptionKey: 'deadlineDescription',
+        values: { paymentId: p.id, days, amount: p.amount },
         relatedPaymentIds: [p.id],
         amount: p.amount,
       }
@@ -53,8 +52,9 @@ function deadlineInsights(payments: Payment[], today: Date): Insight[] {
       id: `radar-variable-${p.id}`,
       kind: 'spike' as const,
       severity: 'warning' as const,
-      title: `${p.name} ödənişi artıb`,
-      description: `Bu dəfə ${formatAmount(p.amount)}, əvvəl ${formatAmount(p.previousAmount!)} idi.`,
+      titleKey: 'variableTitle',
+      descriptionKey: 'variableDescription',
+      values: { paymentId: p.id, amount: p.amount, previousAmount: p.previousAmount! },
       relatedPaymentIds: [p.id],
       amount: p.amount,
     }))
@@ -73,13 +73,13 @@ function duplicateSubscriptionInsights(payments: Payment[]): Insight[] {
   const yearly = items.map(yearlyAmount)
   const savings = Math.round((yearly.reduce((a, b) => a + b, 0) - Math.max(...yearly)) * 100) / 100
   if (savings <= 0) return []
-  const names = items.map((p) => p.name)
   return [{
     id: 'radar-dup-music',
     kind: 'duplicate',
     severity: 'saving',
-    title: 'Abunəliklər üst-üstə düşür',
-    description: `${names.join(' və ')} musiqi xidmətləri üst-üstə düşür (YouTube Premium-a YouTube Music daxildir). Birini dayandırsan, ildə ${formatAmount(savings)} qənaət.`,
+    titleKey: 'duplicateTitle',
+    descriptionKey: 'duplicateDescription',
+    values: { spotifyId: items[0].id, youtubeId: items[1].id, savings },
     relatedPaymentIds: items.map((p) => p.id),
     amount: savings,
   }]
@@ -108,17 +108,14 @@ function heavyWeekInsight(payments: Payment[], today: Date): Insight[] {
   const isHeavy = best.count >= 2 || best.total >= WEEK_LOAD_LARGE_AZN
   if (!isHeavy || best.total <= 0) return []
 
-  const rounded = formatAmount(best.total)
-  const title = `Ən yüklü həftə: ${formatDayMonth(best.start)} – ${formatDayMonth(best.end)}, ${rounded}`
-  const description = `${best.count} ödəniş, həftə üzrə cəmi ${rounded}.`
-
   return [
     {
       id: `radar-week-${toISO(best.start)}`,
       kind: 'forecast',
       severity: 'warning',
-      title,
-      description,
+      titleKey: 'heavyTitle',
+      descriptionKey: 'heavyDescription',
+      values: { start: toISO(best.start), end: toISO(best.end), amount: best.total, count: best.count },
       amount: best.total,
     },
   ]

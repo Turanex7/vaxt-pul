@@ -2,6 +2,7 @@
 
 import { CalendarPlus, Check, Ellipsis, FileX2, Inbox, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -11,19 +12,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  CATEGORIES,
   CATEGORY_IDS,
-  REPEAT_LABELS,
-  daysLeftLabel,
   daysUntil,
-  formatAmount,
-  formatDayMonth,
 } from '@/lib/format'
 import type { CategoryId, Payment } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { buildIcs } from '@/lib/ics'
 import { CategoryBadge, CategoryDot } from './category-badge'
 import { Panel, SectionHeading } from './panel'
+import { useLocalizedFormat } from '@/hooks/use-localized-format'
+import { usePaymentName } from '@/hooks/use-payment-name'
 
 interface PaymentsListProps {
   payments: Payment[]
@@ -35,6 +33,9 @@ interface PaymentsListProps {
 }
 
 export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, onMarkPaid }: PaymentsListProps) {
+  const t = useTranslations()
+  const { amount, dayMonth } = useLocalizedFormat()
+  const paymentName = usePaymentName()
   const [filter, setFilter] = useState<CategoryId | 'all'>('all')
   const visible = payments
     .filter((p) => filter === 'all' || p.category === filter)
@@ -44,18 +45,18 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
     <section aria-labelledby="payments-heading">
       <SectionHeading
         id="payments-heading"
-        title="Bütün ödənişlər"
-        description={`${payments.length} izlənilən ödəniş və son tarix`}
+        title={t('payments.heading')}
+        description={t('payments.tracked', { count: payments.length })}
       />
       <Panel className="p-0 md:p-0">
-        <div className="flex gap-2 overflow-x-auto border-b border-border p-4 md:px-6" role="group" aria-label="Kateqoriya filtri">
+        <div className="flex gap-2 overflow-x-auto border-b border-border p-4 md:px-6" role="group" aria-label={t('payments.filter')}>
           <FilterChip active={filter === 'all'} onClick={() => setFilter('all')}>
-            Hamısı
+            {t('common.all')}
           </FilterChip>
           {CATEGORY_IDS.map((id) => (
             <FilterChip key={id} active={filter === id} onClick={() => setFilter(id)}>
               <CategoryDot category={id} />
-              {CATEGORIES[id].label}
+              {t(`categories.${id}`)}
             </FilterChip>
           ))}
         </div>
@@ -63,39 +64,39 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
         {visible.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-6 py-14 text-center text-muted-foreground">
             <Inbox className="size-10" aria-hidden="true" />
-            <p className="text-lg font-medium text-foreground">Bu kateqoriyada ödəniş yoxdur</p>
-            <p>Yuxarıdakı «Əlavə et» düyməsi ilə yeni ödəniş əlavə edə bilərsən.</p>
+            <p className="text-lg font-medium text-foreground">{t('payments.emptyTitle')}</p>
+            <p>{t('payments.emptyBody')}</p>
           </div>
         ) : (
           <>
             <table className="hidden w-full text-left md:table">
               <thead className="text-sm text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th scope="col" className="px-6 py-3 font-medium">Ad</th>
-                  <th scope="col" className="px-3 py-3 font-medium">Kateqoriya</th>
-                  <th scope="col" className="px-3 py-3 text-right font-medium">Məbləğ</th>
-                  <th scope="col" className="px-3 py-3 font-medium">Növbəti tarix</th>
-                  <th scope="col" className="px-3 py-3 font-medium">Təkrar</th>
-                  <th scope="col" className="px-3 py-3 font-medium">Status</th>
-                  <th scope="col" className="w-14 px-3 py-3"><span className="sr-only">Əməliyyatlar</span></th>
+                  <th scope="col" className="px-6 py-3 font-medium">{t('common.name')}</th>
+                  <th scope="col" className="px-3 py-3 font-medium">{t('common.category')}</th>
+                  <th scope="col" className="px-3 py-3 text-right font-medium">{t('common.amount')}</th>
+                  <th scope="col" className="px-3 py-3 font-medium">{t('common.nextDate')}</th>
+                  <th scope="col" className="px-3 py-3 font-medium">{t('common.repeat')}</th>
+                  <th scope="col" className="px-3 py-3 font-medium">{t('common.status')}</th>
+                  <th scope="col" className="w-14 px-3 py-3"><span className="sr-only">{t('common.actions')}</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {visible.map((p) => (
                   <tr key={p.id} className="transition-colors hover:bg-muted/50">
                     <td className="px-6 py-3.5">
-                      <p className="font-medium">{p.name}</p>
+                      <p className="font-medium">{paymentName(p)}</p>
                       {p.provider && p.provider.trim().toLowerCase() !== p.name.trim().toLowerCase() && (
                         <p className="text-sm text-muted-foreground">{p.provider}</p>
                       )}
                     </td>
                     <td className="px-3 py-3.5"><CategoryBadge category={p.category} /></td>
-                    <td className="px-3 py-3.5 text-right font-semibold whitespace-nowrap tabular-nums">{formatAmount(p.amount)}</td>
-                    <td className="px-3 py-3.5 whitespace-nowrap">{formatDayMonth(p.nextDate)}</td>
-                    <td className="px-3 py-3.5">{REPEAT_LABELS[p.repeat]}</td>
+                    <td className="px-3 py-3.5 text-right font-semibold whitespace-nowrap tabular-nums">{amount(p.amount)}</td>
+                    <td className="px-3 py-3.5 whitespace-nowrap">{dayMonth(p.nextDate)}</td>
+                    <td className="px-3 py-3.5">{t(`repeat.${p.repeat}`)}</td>
                     <td className="px-3 py-3.5"><StatusBadge payment={p} today={today} /></td>
                     <td className="px-3 py-3.5">
-                      <RowMenu payment={p} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
+                      <RowMenu payment={p} name={paymentName(p)} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
                     </td>
                   </tr>
                 ))}
@@ -107,18 +108,18 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
                 <li key={p.id} className="flex items-start gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold">{p.name}</p>
-                      <p className="font-semibold whitespace-nowrap tabular-nums">{formatAmount(p.amount)}</p>
+                      <p className="font-semibold">{paymentName(p)}</p>
+                      <p className="font-semibold whitespace-nowrap tabular-nums">{amount(p.amount)}</p>
                     </div>
                     <p className="mt-0.5 text-muted-foreground">
-                      {formatDayMonth(p.nextDate)} · {REPEAT_LABELS[p.repeat]}
+                      {dayMonth(p.nextDate)} · {t(`repeat.${p.repeat}`)}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <CategoryBadge category={p.category} />
                       <StatusBadge payment={p} today={today} />
                     </div>
                   </div>
-                  <RowMenu payment={p} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
+                  <RowMenu payment={p} name={paymentName(p)} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
                 </li>
               ))}
             </ul>
@@ -156,19 +157,22 @@ function FilterChip({
 }
 
 function StatusBadge({ payment, today }: { payment: Payment; today: Date }) {
+  const t = useTranslations()
   const days = daysUntil(payment.nextDate, today)
-  let label = daysLeftLabel(days)
+  let label = days === 0 ? t('days.today') : days === 1 ? t('days.tomorrow') : days < 0
+    ? t('days.late', { count: Math.abs(days) })
+    : t('days.left', { count: days })
   let tone = 'bg-muted text-muted-foreground'
 
   if (payment.installment) {
-    label = `${payment.installment.paid}/${payment.installment.total} ödənilib`
+    label = t('payments.installments', { paid: payment.installment.paid, total: payment.installment.total })
     tone = 'bg-secondary text-secondary-foreground'
   } else if (days <= 3) {
     tone = 'bg-urgent-soft text-urgent'
   } else if (days <= 7 || payment.isDeadline) {
     tone = 'bg-warning-soft text-warning'
   } else if (payment.autoRenew) {
-    label = 'Avto-yenilənir'
+    label = t('payments.autoRenew')
     tone = 'bg-success-soft text-success'
   }
 
@@ -179,7 +183,8 @@ function StatusBadge({ payment, today }: { payment: Payment; today: Date }) {
   )
 }
 
-function RowMenu({ payment, onEdit, onCancelHelp, onDelete, onMarkPaid }: { payment: Payment } & Omit<PaymentsListProps, 'payments' | 'today'>) {
+function RowMenu({ payment, name, onEdit, onCancelHelp, onDelete, onMarkPaid }: { payment: Payment; name: string } & Omit<PaymentsListProps, 'payments' | 'today'>) {
+  const t = useTranslations()
   const addToCalendar = () => {
     const fileName = payment.name
       .normalize('NFD')
@@ -200,7 +205,7 @@ function RowMenu({ payment, onEdit, onCancelHelp, onDelete, onMarkPaid }: { paym
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label={`${payment.name} üçün əməliyyatlar`}>
+          <Button variant="ghost" size="icon" aria-label={t('payments.menuLabel', { name })}>
             <Ellipsis className="size-5" />
           </Button>
         }
@@ -208,24 +213,24 @@ function RowMenu({ payment, onEdit, onCancelHelp, onDelete, onMarkPaid }: { paym
       <DropdownMenuContent align="end" className="min-w-52">
         <DropdownMenuItem className="py-2 text-base" onClick={() => onEdit(payment)}>
           <Pencil aria-hidden="true" />
-          Redaktə et
+          {t('common.edit')}
         </DropdownMenuItem>
         <DropdownMenuItem className="py-2 text-base" onClick={() => onCancelHelp(payment)}>
           {payment.autoRenew ? <RefreshCw aria-hidden="true" /> : <FileX2 aria-hidden="true" />}
-          Ləğv köməkçisi
+          {t('payments.cancelHelp')}
         </DropdownMenuItem>
         <DropdownMenuItem className="py-2 text-base" onClick={addToCalendar}>
           <CalendarPlus aria-hidden="true" />
-          Təqvimə əlavə et
+          {t('payments.calendarAdd')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="py-2 text-base" onClick={() => onMarkPaid(payment)}>
           <Check aria-hidden="true" />
-          Ödənildi
+          {t('payments.paid')}
         </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" className="py-2 text-base" onClick={() => onDelete(payment)}>
           <Trash2 aria-hidden="true" />
-          Sil
+          {t('common.delete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -13,10 +13,12 @@ export function CategoryDot({ category, className }: { category: CategoryId; cla
 }
 
 export function CategoryBadge({ category }: { category: CategoryId }) {
+  const t = useTranslations('categories')
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-sm font-medium whitespace-nowrap text-foreground/80">
       <CategoryDot category={category} />
-      {CATEGORIES[category].label}
+      {t(category)}
     </span>
   )
 }
+import { useTranslations } from 'next-intl'

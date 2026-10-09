@@ -173,16 +173,22 @@ function mapParseItems(items: unknown[]): PaymentDraft[] {
     .filter((x): x is PaymentDraft => x !== null)
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) {
-    throw new Error(`${url} failed (${res.status})`)
+async function postJson<T>(url: string, body: unknown): Promise<T | null> {
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      console.error(`[api client] ${url} returned HTTP ${res.status}`)
+      return null
+    }
+    return (await res.json()) as T
+  } catch (error) {
+    console.error(`[api client] ${url} request failed`, error instanceof Error ? error.message : error)
+    return null
   }
-  return (await res.json()) as T
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -252,38 +258,24 @@ function fallbackParseQuick(text: string): PaymentDraft[] {
   ]
 }
 
-function fallbackCancelHelp(item: Payment): CancelHelp {
+function fallbackCancelHelp(item: Payment, locale: 'az' | 'en' | 'ru' = 'az'): CancelHelp {
   const provider = item.provider ?? item.name
   const isOnline = item.category === 'abune'
-
-  const steps = isOnline
-    ? [
-        `${provider} hesabına daxil ol (tətbiq və ya sayt).`,
-        '«Hesab» və ya «Abunəlik» bölməsini aç.',
-        '«Abunəliyi ləğv et» düyməsini seç və təsdiqlə.',
-        'Təsdiq e-poçtunu saxla — növbəti ay pul çıxılmamalıdır.',
-        'Kart çıxarışını növbəti ödəniş tarixində yoxla.',
-      ]
-    : [
-        `${provider} ilə müqavilə nömrəni tap (qəbz və ya müqavilədə olur).`,
-        'Aşağıdakı məktubu e-poçtla göndər və ya ofisə apar.',
-        'Qəbul nömrəsini və ya imzalı surəti mütləq saxla.',
-        'Avtomatik ödənişi bank tətbiqində də dayandır.',
-        'Son ödəniş tarixindən sonra çıxarışı yoxla.',
-      ]
-
-  const letter = `Hörmətli ${provider} komandası,
-
-Mən, [Ad Soyad], "${item.name}" xidməti üzrə müqaviləmin/abunəliyimin ləğv edilməsini xahiş edirəm.
-
-Müqavilə / hesab nömrəsi: [nömrə]
-Əlaqə telefonu: [telefon]
-
-Xahiş edirəm, növbəti ödəniş tarixindən (${item.nextDate}) etibarən heç bir məbləğ silinməsin və ləğvin təsdiqini yazılı şəkildə göndərəsiniz.
-
-Hörmətlə,
-[Ad Soyad]
-[Tarix]`
+  const copy = locale === 'en' ? {
+    online: [`Sign in to your ${provider} account on the app or website.`, 'Open Account or Subscription settings.', 'Choose Cancel subscription and confirm.', 'Save the confirmation email and check that renewal is off.', 'Check your card statement on the next payment date.'],
+    offline: [`Find your contract number for ${provider} on a receipt or contract.`, 'Email the letter below or deliver it to the provider office.', 'Keep the receipt number or a signed copy.', 'Also turn off automatic payment in your banking app.', 'Check your statement after the final payment date.'],
+    dear: `Dear ${provider} team,`, request: `I, [Full name], request cancellation of my contract/subscription for "${item.name}".`, number: 'Contract / account number: [number]', phone: 'Contact phone: [phone]', stop: `Please stop charges from the next payment date (${item.nextDate}) and send written confirmation of cancellation.`, regards: 'Sincerely,', name: '[Full name]', date: '[Date]',
+  } : locale === 'ru' ? {
+    online: [`Войдите в аккаунт ${provider} в приложении или на сайте.`, 'Откройте настройки аккаунта или подписки.', 'Выберите отмену подписки и подтвердите действие.', 'Сохраните письмо с подтверждением и проверьте отключение продления.', 'Проверьте выписку по карте в дату следующего платежа.'],
+    offline: [`Найдите номер договора с ${provider} в квитанции или договоре.`, 'Отправьте письмо ниже по электронной почте или передайте в офис.', 'Сохраните номер обращения или подписанную копию.', 'Отключите автоплатёж также в банковском приложении.', 'Проверьте выписку после даты последнего платежа.'],
+    dear: `Уважаемая команда ${provider}!`, request: `Я, [ФИО], прошу расторгнуть договор/отменить подписку на услугу «${item.name}».`, number: 'Номер договора / счёта: [номер]', phone: 'Контактный телефон: [телефон]', stop: `Прошу прекратить списания со следующей даты платежа (${item.nextDate}) и прислать письменное подтверждение отмены.`, regards: 'С уважением,', name: '[ФИО]', date: '[Дата]',
+  } : {
+    online: [`${provider} hesabına daxil ol (tətbiq və ya sayt).`, '«Hesab» və ya «Abunəlik» bölməsini aç.', '«Abunəliyi ləğv et» düyməsini seç və təsdiqlə.', 'Təsdiq e-poçtunu saxla və yenilənmənin dayandığını yoxla.', 'Kart çıxarışını növbəti ödəniş tarixində yoxla.'],
+    offline: [`${provider} ilə müqavilə nömrəni qəbz və ya müqavilədə tap.`, 'Aşağıdakı məktubu e-poçtla göndər və ya ofisə apar.', 'Qəbul nömrəsini və ya imzalı surəti saxla.', 'Avtomatik ödənişi bank tətbiqində də dayandır.', 'Son ödəniş tarixindən sonra çıxarışı yoxla.'],
+    dear: `Hörmətli ${provider} komandası,`, request: `Mən, [Ad Soyad], "${item.name}" xidməti üzrə müqaviləmin/abunəliyimin ləğv edilməsini xahiş edirəm.`, number: 'Müqavilə / hesab nömrəsi: [nömrə]', phone: 'Əlaqə telefonu: [telefon]', stop: `Növbəti ödəniş tarixindən (${item.nextDate}) etibarən məbləğ tutulmamasını və ləğvin yazılı təsdiqini göndərməyinizi xahiş edirəm.`, regards: 'Hörmətlə,', name: '[Ad Soyad]', date: '[Tarix]',
+  }
+  const steps = isOnline ? copy.online : copy.offline
+  const letter = `${copy.dear}\n\n${copy.request}\n\n${copy.number}\n${copy.phone}\n\n${copy.stop}\n\n${copy.regards}\n${copy.name}\n${copy.date}`
 
   return { steps, letter }
 }
@@ -291,6 +283,10 @@ Hörmətlə,
 export async function parseText(text: string): Promise<PaymentDraft[]> {
   try {
     const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
+    if (!data) {
+      lastAiStatus = 'fallback'
+      return fallbackParseText(text)
+    }
     const items = mapParseItems(data.items ?? [])
     lastAiStatus = 'ai'
     return items
@@ -307,6 +303,10 @@ export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
       imageBase64,
       mimeType: file.type || 'image/jpeg',
     })
+    if (!data) {
+      lastAiStatus = 'fallback'
+      return fallbackParseReceipt(file)
+    }
     const items = mapParseItems(data.items ?? [])
     lastAiStatus = 'ai'
     return items
@@ -319,6 +319,10 @@ export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
 export async function parseQuick(text: string): Promise<PaymentDraft[]> {
   try {
     const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
+    if (!data) {
+      lastAiStatus = 'fallback'
+      return fallbackParseQuick(text)
+    }
     const items = mapParseItems(data.items ?? [])
     lastAiStatus = 'ai'
     return items
@@ -328,28 +332,39 @@ export async function parseQuick(text: string): Promise<PaymentDraft[]> {
   }
 }
 
-export async function generateCancelHelp(item: Payment): Promise<CancelHelp> {
+export async function generateCancelHelp(item: Payment, locale: 'az' | 'en' | 'ru' = 'az', displayName = item.name): Promise<CancelHelp> {
+  const localizedItem = { ...item, name: displayName }
   try {
     const data = await postJson<CancelHelp>('/api/cancel', {
-      name: item.name,
+      name: displayName,
       amount: item.amount,
       category: item.category,
+      locale,
     })
+    if (!data) {
+      lastAiStatus = 'fallback'
+      return fallbackCancelHelp(localizedItem, locale)
+    }
     const steps = Array.isArray(data.steps) ? data.steps.map(String).filter(Boolean) : []
     const letter = typeof data.letter === 'string' ? data.letter.trim() : ''
     if (steps.length === 0 || !letter) {
       lastAiStatus = 'fallback'
-      return fallbackCancelHelp(item)
+      return fallbackCancelHelp(localizedItem, locale)
     }
     lastAiStatus = 'ai'
     return { steps, letter }
   } catch {
     lastAiStatus = 'fallback'
-    return fallbackCancelHelp(item)
+    return fallbackCancelHelp(localizedItem, locale)
   }
 }
 
-export async function getWeeklySummary(payments: Payment[], today: Date): Promise<WeeklySummary> {
+export async function getWeeklySummary(
+  payments: Payment[],
+  today: Date,
+  locale: 'az' | 'en' | 'ru' = 'az',
+  localizedName: (payment: Payment) => string = (payment) => payment.name,
+): Promise<WeeklySummary> {
   const stats = getNext7DaysStats(payments, today)
   const biggest = [...stats.items].sort((a, b) => b.payment.amount - a.payment.amount)[0]
   const nearestDeadline = stats.items
@@ -359,18 +374,27 @@ export async function getWeeklySummary(payments: Payment[], today: Date): Promis
     count: stats.count,
     total: stats.total,
     deadlineCount: stats.deadlineCount,
-    biggestPayment: biggest ? { name: biggest.payment.name, amount: biggest.payment.amount } : null,
+    biggestPayment: biggest ? { name: localizedName(biggest.payment), amount: biggest.payment.amount } : null,
     nearestDeadline: nearestDeadline
-      ? { name: nearestDeadline.payment.name, daysLeft: daysUntil(nearestDeadline.date, today) }
+      ? { name: localizedName(nearestDeadline.payment), daysLeft: daysUntil(nearestDeadline.date, today) }
       : null,
   }
-  const fallbackHeadline = `Növbəti 7 gündə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`
+  const fallbackHeadline = locale === 'en'
+    ? `Next 7 days: ${stats.count} payments, ${stats.deadlineCount} deadlines.`
+    : locale === 'ru'
+      ? `Следующие 7 дней: платежей — ${stats.count}, сроков — ${stats.deadlineCount}.`
+      : `Növbəti 7 gündə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`
   const fallbackBody = biggest
-    ? `${formatAmount(stats.total)} məbləğini həftəlik büdcəndə nəzərdə saxla. Ən böyük ödəniş ${biggest.payment.name} üçündür (${formatAmount(biggest.payment.amount)})${nearestDeadline ? `, ${nearestDeadline.payment.name} üçün isə ${daysUntil(nearestDeadline.date, today)} gün qalıb` : ''}.`
-    : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.'
+    ? locale === 'en'
+      ? `Plan ${formatAmount(stats.total, locale)} in your weekly budget. The largest payment is ${localizedName(biggest.payment)} (${formatAmount(biggest.payment.amount, locale)})${nearestDeadline ? `; ${localizedName(nearestDeadline.payment)} is due in ${daysUntil(nearestDeadline.date, today)} days` : ''}.`
+      : locale === 'ru'
+        ? `Запланируйте ${formatAmount(stats.total, locale)} в бюджете на неделю. Самый крупный платёж — ${localizedName(biggest.payment)} (${formatAmount(biggest.payment.amount, locale)})${nearestDeadline ? `; до срока «${localizedName(nearestDeadline.payment)}» осталось ${daysUntil(nearestDeadline.date, today)} дн.` : ''}.`
+        : `${formatAmount(stats.total, locale)} məbləğini həftəlik büdcəndə nəzərdə saxla. Ən böyük ödəniş ${localizedName(biggest.payment)} üçündür (${formatAmount(biggest.payment.amount, locale)})${nearestDeadline ? `, ${localizedName(nearestDeadline.payment)} üçün isə ${daysUntil(nearestDeadline.date, today)} gün qalıb` : ''}.`
+    : locale === 'en' ? 'No payments are due in the next 7 days. Enjoy a lighter week.' : locale === 'ru' ? 'В следующие 7 дней платежей нет. Наслаждайтесь спокойной неделей.' : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.'
 
   try {
-    const result = await postJson<{ title?: unknown; body?: unknown }>('/api/weekly', { stats: payload })
+    const result = await postJson<{ title?: unknown; body?: unknown }>('/api/weekly', { stats: payload, locale })
+    if (!result) throw new Error('Weekly summary request failed')
     if (typeof result.title !== 'string' || typeof result.body !== 'string' || !result.title.trim() || !result.body.trim()) {
       throw new Error('Invalid weekly summary response')
     }

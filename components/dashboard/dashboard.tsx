@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { nextPaymentPeriod, startOfToday } from '@/lib/format'
 import { createMockPayments, type Insight, type Payment, type PaymentDraft, mockPayments } from '@/lib/mock-data'
 import { buildRadarInsights } from '@/lib/radar'
@@ -17,10 +18,12 @@ import { PaymentsList } from './payments-list'
 import { RadarSection } from './radar-section'
 import { WeeklySummary } from './weekly-summary'
 import { WhatIfSimulator } from './what-if-simulator'
+import { paymentNameKey } from '@/lib/payment-name'
 
 const PAYMENTS_STORAGE_KEY = 'paypulse:payments'
 
 export function Dashboard() {
+  const t = useTranslations()
   const today = useToday()
   const [payments, setPayments] = useState<Payment[]>(mockPayments)
   const [paymentsLoaded, setPaymentsLoaded] = useState(false)
@@ -30,6 +33,10 @@ export function Dashboard() {
   const [editing, setEditing] = useState<Payment | null>(null)
   const [cancelling, setCancelling] = useState<Payment | null>(null)
   const [highlightIds, setHighlightIds] = useState<string[]>([])
+  const localizedName = (id: string, name: string) => {
+    const key = paymentNameKey(id)
+    return key ? t(`payments.name.${key}`) : name
+  }
 
   useEffect(() => {
     let restored = false
@@ -73,7 +80,7 @@ export function Dashboard() {
       repeat: d.repeat,
     }))
     setPayments((prev) => [...prev, ...created])
-    toast.success(created.length === 1 ? `«${created[0].name}» əlavə olundu` : `${created.length} ödəniş əlavə olundu`)
+    toast.success(created.length === 1 ? t('toast.addedOne', { name: created[0].name }) : t('toast.addedMany', { count: created.length }))
   }
 
   const savePayment = (id: string, draft: PaymentDraft) => {
@@ -92,30 +99,30 @@ export function Dashboard() {
       ),
     )
     setEditing(null)
-    toast.success('Dəyişikliklər yadda saxlanıldı')
+    toast.success(t('toast.saved'))
   }
 
   const deletePayment = (payment: Payment) => {
     setPayments((prev) => prev.filter((p) => p.id !== payment.id))
-    toast(`«${payment.name}» silindi`, {
-      action: { label: 'Geri qaytar', onClick: () => setPayments((prev) => [...prev, payment]) },
+    toast(t('toast.deleted', { name: localizedName(payment.id, payment.name) }), {
+      action: { label: t('toast.undo'), onClick: () => setPayments((prev) => [...prev, payment]) },
     })
   }
 
   const markPaid = (payment: Payment) => {
     if (payment.repeat === 'once') {
       setPayments((prev) => prev.filter((p) => p.id !== payment.id))
-      toast.success(`«${payment.name}» ödənildi və siyahıdan çıxarıldı`)
+      toast.success(t('toast.paidRemoved', { name: localizedName(payment.id, payment.name) }))
       return
     }
 
     const nextDate = nextPaymentPeriod(payment.nextDate, payment.repeat)
     setPayments((prev) => prev.map((p) => p.id === payment.id ? { ...p, nextDate } : p))
-    toast.success(`«${payment.name}» ödənildi; növbəti tarix yeniləndi`)
+    toast.success(t('toast.paidAdvanced', { name: localizedName(payment.id, payment.name) }))
   }
 
   const resetDemoData = () => {
-    if (!window.confirm('Demo datasını sıfırlamaq və bütün dəyişiklikləri silmək istəyirsən?')) return
+    if (!window.confirm(t('toast.resetConfirm'))) return
     try {
       window.localStorage.removeItem(PAYMENTS_STORAGE_KEY)
     } catch {
@@ -123,7 +130,7 @@ export function Dashboard() {
     }
     skipNextStorageWrite.current = true
     setPayments(createMockPayments(startOfToday()))
-    toast.success('Demo datası bərpa edildi')
+    toast.success(t('toast.resetDone'))
   }
 
   const viewDuplicates = (insight: Insight) => {
@@ -133,9 +140,9 @@ export function Dashboard() {
 
   const recognize = (_insight: Insight, recognized: boolean) => {
     if (recognized) {
-      toast.success('Təşəkkürlər! Bu ödənişi tanınmış kimi qeyd etdik.')
+      toast.success(t('toast.recognized'))
     } else {
-      toast.error('Kartını bloklamağı və bankına zəng etməyi tövsiyə edirik.', { duration: 6000 })
+      toast.error(t('toast.notRecognized'), { duration: 6000 })
     }
   }
 
@@ -144,17 +151,17 @@ export function Dashboard() {
       <AppHeader onAdd={() => setAddOpen(true)} onReset={resetDemoData} />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-6 md:gap-12 md:px-6 md:py-10">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">Salam!</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">{t('dashboard.greeting')}</h1>
           <p className="mt-2 max-w-2xl text-lg text-muted-foreground text-pretty">
-            Növbəti 30 gündə nə qədər ödəyəcəksən və hansı tarixi qaçırmamalısan?
+            {t('dashboard.intro')}
           </p>
         </div>
 
         <HeroSummary payments={payments} today={today} />
-        <RadarSection insights={insights} onViewDuplicates={viewDuplicates} onRecognize={recognize} />
+        <RadarSection insights={insights} payments={payments} onViewDuplicates={viewDuplicates} onRecognize={recognize} />
 
         <section aria-labelledby="overview-heading">
-          <h2 id="overview-heading" className="mb-4 text-2xl font-semibold tracking-tight">Xərclərin mənzərəsi</h2>
+          <h2 id="overview-heading" className="mb-4 text-2xl font-semibold tracking-tight">{t('dashboard.expenses')}</h2>
           <div className="grid gap-4 lg:grid-cols-2">
             <CategoryChart payments={payments} />
             <PaymentCalendar payments={payments} today={today} />

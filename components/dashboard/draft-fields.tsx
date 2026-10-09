@@ -1,13 +1,12 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
+import { useTranslations } from 'next-intl'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CATEGORIES, CATEGORY_IDS, REPEAT_LABELS } from '@/lib/format'
+import { CATEGORY_IDS, REPEAT_LABELS } from '@/lib/format'
 import type { CategoryId, PaymentDraft, Repeat } from '@/lib/mock-data'
 
-const categoryItems = CATEGORY_IDS.map((id) => ({ value: id, label: CATEGORIES[id].label }))
-const repeatItems = (Object.keys(REPEAT_LABELS) as Repeat[]).map((r) => ({ value: r, label: REPEAT_LABELS[r] }))
 
 const fieldClass = 'h-11 rounded-xl text-base md:text-base'
 
@@ -20,12 +19,17 @@ export function DraftFields({
   draft: PaymentDraft
   onChange: (next: PaymentDraft) => void
 }) {
+  const t = useTranslations('draft')
+  const categories = useTranslations('categories')
+  const repeats = useTranslations('repeat')
+  const categoryItems = CATEGORY_IDS.map((id) => ({ value: id, label: categories(id) }))
+  const repeatItems = (Object.keys(REPEAT_LABELS) as Repeat[]).map((r) => ({ value: r, label: repeats(r) }))
   const set = <K extends keyof PaymentDraft>(key: K, value: PaymentDraft[K]) => onChange({ ...draft, [key]: value })
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="flex flex-col gap-1.5 sm:col-span-2">
-        <Label htmlFor={`${idPrefix}-name`} className="text-base">Ad</Label>
+        <Label htmlFor={`${idPrefix}-name`} className="text-base">{t('name')}</Label>
         <Input
           id={`${idPrefix}-name`}
           className={fieldClass}
@@ -35,7 +39,7 @@ export function DraftFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-amount`} className="text-base">Məbləğ (AZN)</Label>
+        <Label htmlFor={`${idPrefix}-amount`} className="text-base">{t('amount')}</Label>
         <Input
           id={`${idPrefix}-amount`}
           className={fieldClass}
@@ -49,7 +53,7 @@ export function DraftFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-date`} className="text-base">Tarix</Label>
+        <Label htmlFor={`${idPrefix}-date`} className="text-base">{t('date')}</Label>
         <Input
           id={`${idPrefix}-date`}
           className={fieldClass}
@@ -60,7 +64,7 @@ export function DraftFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-category`} className="text-base">Kateqoriya</Label>
+        <Label htmlFor={`${idPrefix}-category`} className="text-base">{t('category')}</Label>
         <Select
           items={categoryItems}
           value={draft.category}
@@ -79,7 +83,7 @@ export function DraftFields({
         </Select>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-repeat`} className="text-base">Təkrar</Label>
+        <Label htmlFor={`${idPrefix}-repeat`} className="text-base">{t('repeat')}</Label>
         <Select items={repeatItems} value={draft.repeat} onValueChange={(v) => v && set('repeat', v as Repeat)}>
           <SelectTrigger id={`${idPrefix}-repeat`} className="h-11 w-full rounded-xl text-base">
             <SelectValue />

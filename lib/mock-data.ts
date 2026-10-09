@@ -47,8 +47,11 @@ export interface Insight {
   id: string
   kind: InsightKind
   severity: InsightSeverity
-  title: string
-  description: string
+  title?: string
+  description?: string
+  titleKey?: string
+  descriptionKey?: string
+  values?: Record<string, string | number>
   relatedPaymentIds?: string[]
   amount?: number
 }

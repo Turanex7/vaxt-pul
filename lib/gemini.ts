@@ -1,5 +1,5 @@
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent'
 
 export type GeminiPart =
   | { text: string }
@@ -18,13 +18,22 @@ export async function generateGeminiJson(parts: GeminiPart[]): Promise<unknown> 
       contents: [{ parts }],
       generationConfig: {
         responseMimeType: 'application/json',
-        temperature: 0.1,
       },
     }),
   })
 
   if (!res.ok) {
-    throw new Error(`Gemini request failed (${res.status})`)
+    const responseText = await res.text()
+    let providerMessage = responseText.trim()
+    try {
+      const errorBody = JSON.parse(responseText) as { error?: { message?: unknown } }
+      if (typeof errorBody.error?.message === 'string') providerMessage = errorBody.error.message
+    } catch {
+      // Keep the raw response text when the provider did not return JSON.
+    }
+    const error = new Error(`Gemini request failed (${res.status}): ${providerMessage || res.statusText}`)
+    Object.assign(error, { status: res.status })
+    throw error
   }
 
   const data = (await res.json()) as {
