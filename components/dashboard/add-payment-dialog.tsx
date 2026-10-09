@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ImageUp, Loader2, MessageSquareText, Sparkles, Trash2, Zap } from 'lucide-react'
 import { useId, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,7 @@ interface AddPaymentDialogProps {
 
 export function AddPaymentDialog({ open, onOpenChange, onConfirm }: AddPaymentDialogProps) {
   const t = useTranslations('addDialog')
+  const locale = useLocale() as 'az' | 'en' | 'ru'
   const [drafts, setDrafts] = useState<PaymentDraft[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [usedFallback, setUsedFallback] = useState(false)
@@ -94,13 +95,13 @@ export function AddPaymentDialog({ open, onOpenChange, onConfirm }: AddPaymentDi
               </TabsTrigger>
             </TabsList>
             <TabsContent value="sms" className="pt-4">
-              <SmsTab onSubmit={(text) => run(() => parseText(text))} />
+              <SmsTab onSubmit={(text) => run(() => parseText(text, locale))} />
             </TabsContent>
             <TabsContent value="receipt" className="pt-4">
-              <ReceiptTab onSubmit={(file) => run(() => parseReceipt(file))} />
+              <ReceiptTab onSubmit={(file) => run(() => parseReceipt(file, locale))} />
             </TabsContent>
             <TabsContent value="quick" className="pt-4">
-              <QuickTab onSubmit={(text) => run(() => parseQuick(text))} />
+              <QuickTab onSubmit={(text) => run(() => parseQuick(text, locale))} />
             </TabsContent>
           </Tabs>
         )}

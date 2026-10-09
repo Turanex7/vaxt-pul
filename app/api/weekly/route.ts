@@ -1,14 +1,18 @@
 import { generateGeminiJson } from '@/lib/gemini'
-import { formatAmount } from '@/lib/format'
+import { formatAmount, LOCALE_TAGS } from '@/lib/format'
 import { NextResponse } from 'next/server'
+import azMessages from '@/messages/az.json'
+import enMessages from '@/messages/en.json'
+import ruMessages from '@/messages/ru.json'
 
 interface WeeklyStats {
   count: number
   total: number
   deadlineCount: number
-  biggestPayment: { name: string; amount: number } | null
-  nearestDeadline: { name: string; daysLeft: number } | null
+  biggestPayment: { name: string; amount: number; category?: string } | null
+  nearestDeadline: { name: string; daysLeft: number; category?: string } | null
 }
+const messages = { az: azMessages, en: enMessages, ru: ruMessages }
 
 export async function POST(request: Request) {
   let locale: 'az' | 'en' | 'ru' = 'az'
@@ -26,18 +30,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Valid weekly stats are required' }, { status: 400 })
     }
 
-    const language = locale === 'en' ? 'English' : locale === 'ru' ? 'Russian' : 'Azerbaijani'
-    const example = locale === 'en' ? 'Next 7 days: 5 payments, 1 deadline.' : locale === 'ru' ? 'Следующие 7 дней: платежей — 5, сроков — 1.' : 'Növbəti 7 gündə 5 ödəniş, 1 son tarix var.'
-    const prompt = `You are a personal finance assistant. Write a concise weekly summary in ${language}, using the supplied names and figures.
+    const example = messages[locale].weekly.example
+    const prompt = `You are a personal finance assistant. Write a concise weekly summary using the supplied names and figures.
 
-Vacib qaydalar:
-- Heç bir say, cəm, gün fərqi və ya məbləği özün hesablamamalısan.
-- Yalnız verilən stats obyektindəki faktlardan istifadə et; yeni rəqəm və ödəniş uydurma.
-- title qısa olsun, məsələn: "${example}"
-- body 1–2 cümləlik praktik tövsiyə olsun, yalnız ${language} dilində.
-- YALNIZ bu JSON formatında cavab ver: {"title":"...","body":"..."}
+Yalnız ${locale} dilində cavab ver (az: Azərbaycan dili, en: English, ru: Русский). Use category labels in the supplied data as given.
+Do not calculate counts, totals, date differences, or amounts. Use only supplied facts and invent no values.
+Keep the title short, for example: "${example}". Make the body 1–2 sentences with a practical suggestion.
+Return JSON only in this shape: {"title":"...","body":"..."}
 
-Verilmiş stats (toxunmadan istifadə et):
+Stats (use without changes):
 ${JSON.stringify(stats)}`
 
     const result = await generateGeminiJson([{ text: prompt }])
@@ -68,51 +69,32 @@ ${JSON.stringify(stats)}`
 }
 
 function buildFallback(stats: WeeklyStats, locale: 'az' | 'en' | 'ru') {
-  const paymentCount = plural(stats.count, locale, 'payment')
-  const deadlineCount = plural(stats.deadlineCount, locale, 'deadline')
-  const title = locale === 'en'
-    ? `Next 7 days: ${paymentCount}, ${deadlineCount}.`
-    : locale === 'ru'
-      ? `Следующие 7 дней: ${paymentCount}, ${deadlineCount}.`
-      : `Növbəti 7 gündə ${paymentCount}, ${deadlineCount} var.`
+  const copy = messages[locale].weekly.serverFallback
+  const title = interpolate(copy.headline, {
+    payments: plural(copy.paymentCount, stats.count, locale),
+    deadlines: plural(copy.deadlineCount, stats.deadlineCount, locale),
+  })
   const amount = formatAmount(stats.total, locale)
   const biggest = stats.biggestPayment
   const deadline = stats.nearestDeadline
-  let body: string
-  if (locale === 'en') {
-    body = biggest
-      ? `Set aside ${amount} for the next 7 days. The largest payment is ${biggest.name} (${formatAmount(biggest.amount, locale)})${deadline ? `; ${deadline.name} is due in ${deadline.daysLeft} ${deadline.daysLeft === 1 ? 'day' : 'days'}` : ''}.`
-      : 'No payments are due in the next 7 days. Enjoy a lighter week.'
-  } else if (locale === 'ru') {
-    body = biggest
-      ? `Запланируйте ${amount} на следующие 7 дней. Самый крупный платёж — ${biggest.name} (${formatAmount(biggest.amount, locale)})${deadline ? `; до срока «${deadline.name}» осталось ${deadline.daysLeft} ${russianDays(deadline.daysLeft)}` : ''}.`
-      : 'В следующие 7 дней платежей нет. Наслаждайтесь спокойной неделей.'
-  } else {
-    body = biggest
-      ? `Növbəti 7 gün üçün ${amount} məbləğini nəzərdə saxla. Ən böyük ödəniş ${biggest.name} üçündür (${formatAmount(biggest.amount, locale)})${deadline ? `, ${deadline.name} üçün isə ${deadline.daysLeft} gün qalıb` : ''}.`
-      : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.'
-  }
+  if (!biggest) return { title, body: copy.empty }
+  const deadlineClause = deadline
+    ? interpolate(copy.deadlineClause, { name: deadline.name, days: plural(copy.dayCount, deadline.daysLeft, locale) })
+    : ''
+  const body = interpolate(copy.budget, {
+    amount,
+    biggest: biggest.name,
+    paymentAmount: formatAmount(biggest.amount, locale),
+    deadlineClause,
+  })
   return { title, body }
 }
 
-function plural(count: number, locale: 'az' | 'en' | 'ru', type: 'payment' | 'deadline') {
-  if (locale === 'az') return type === 'payment' ? `${count} ödəniş` : `${count} son tarix`
-  if (locale === 'en') {
-    const singular = count === 1
-    return `${count} ${type === 'payment' ? singular ? 'payment' : 'payments' : singular ? 'deadline' : 'deadlines'}`
-  }
-  const mod10 = Math.abs(count) % 10
-  const mod100 = Math.abs(count) % 100
-  const form = mod10 === 1 && mod100 !== 11 ? 'one' : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? 'few' : 'many'
-  if (type === 'payment') return `${count} ${form === 'one' ? 'платёж' : form === 'few' ? 'платежа' : 'платежей'}`
-  return `${count} ${form === 'one' ? 'срок' : form === 'few' ? 'срока' : 'сроков'}`
+function plural(forms: Record<string, string>, count: number, locale: 'az' | 'en' | 'ru') {
+  const category = new Intl.PluralRules(LOCALE_TAGS[locale], { type: 'cardinal' }).select(count)
+  return interpolate(forms[category] ?? forms.other, { count })
 }
 
-function russianDays(value: number) {
-  const n = Math.abs(value)
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'день'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'дня'
-  return 'дней'
+function interpolate(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ''))
 }

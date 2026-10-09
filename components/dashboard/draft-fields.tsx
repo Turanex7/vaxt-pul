@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { useTranslations } from 'next-intl'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CATEGORY_IDS, REPEAT_LABELS } from '@/lib/format'
+import { CATEGORY_IDS, REPEAT_IDS } from '@/lib/format'
 import type { CategoryId, PaymentDraft, Repeat } from '@/lib/mock-data'
 
 
@@ -23,7 +23,7 @@ export function DraftFields({
   const categories = useTranslations('categories')
   const repeats = useTranslations('repeat')
   const categoryItems = CATEGORY_IDS.map((id) => ({ value: id, label: categories(id) }))
-  const repeatItems = (Object.keys(REPEAT_LABELS) as Repeat[]).map((r) => ({ value: r, label: repeats(r) }))
+  const repeatItems = REPEAT_IDS.map((r) => ({ value: r, label: repeats(r) }))
   const set = <K extends keyof PaymentDraft>(key: K, value: PaymentDraft[K]) => onChange({ ...draft, [key]: value })
 
   return (

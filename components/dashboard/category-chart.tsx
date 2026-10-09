@@ -10,7 +10,7 @@ import { useLocalizedFormat } from '@/hooks/use-localized-format'
 
 export function CategoryChart({ payments }: { payments: Payment[] }) {
   const t = useTranslations('categories')
-  const { amount } = useLocalizedFormat()
+  const { amount, number } = useLocalizedFormat()
   const chartConfig = Object.fromEntries(
     CATEGORY_IDS.map((id) => [id, { label: t(id), color: CATEGORIES[id].color }]),
   ) satisfies ChartConfig
@@ -59,7 +59,7 @@ export function CategoryChart({ payments }: { payments: Payment[] }) {
                     return (
                       <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                         <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) - 6} className="fill-foreground text-2xl font-semibold">
-                          {amount(total).replace(/(?: AZN|AZN )$/, '')}
+                          {number(total)}
                         </tspan>
                         <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) + 18} className="fill-muted-foreground text-sm">
                           {t('perMonth')}

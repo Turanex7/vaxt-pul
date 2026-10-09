@@ -1,5 +1,8 @@
 import type { CategoryId, Payment, PaymentDraft, Repeat } from './mock-data'
-import { daysUntil, formatAmount, getNext7DaysStats, MONTHS_LOWER, parseISO, startOfToday, toISO } from './format'
+import { daysUntil, formatAmount, formatCalendarDate, getLocalizedMonthAliases, getNext7DaysStats, parseISO, startOfToday, toISO } from './format'
+import azMessages from '@/messages/az.json'
+import enMessages from '@/messages/en.json'
+import ruMessages from '@/messages/ru.json'
 
 let lastAiStatus: 'ai' | 'fallback' = 'ai'
 
@@ -27,51 +30,73 @@ function isoFromToday(offsetDays: number): string {
 }
 
 const CATEGORY_KEYWORDS: [RegExp, CategoryId][] = [
-  [/sığorta|sigorta|baxış|baxis|pasport|sənəd|sened|vəsiqə/i, 'sigorta'],
-  [/kredit|taksit|bank|borc/i, 'kredit'],
-  [/azercell|bakcell|nar|internet|tarif|citynet|telefon/i, 'telekom'],
-  [/elektrik|işıq|isiq|qaz|su\b|kommunal|azərişıq|azerisiq/i, 'kommunal'],
-  [/netflix|spotify|youtube|abunə|abune|premium|apple|bolt/i, 'abune'],
-  [/kirayə|kiraye|zal|idman|gym|üzvlük|uzvluk|müqavilə|muqavile/i, 'muqavile'],
+  [/sığorta|insurance|страх|baxış|baxis|техосмотр|pasport|sənəd|sened|vəsiqə/i, 'insurance'],
+  [/kredit|loan|кредит|taksit|bank|borc/i, 'loans'],
+  [/azercell|bakcell|nar|internet|tarif|citynet|telefon|связ/i, 'telecom'],
+  [/elektrik|işıq|isiq|qaz|su\b|kommunal|utilities|коммун|azərişıq|azerisiq/i, 'utilities'],
+  [/netflix|spotify|youtube|abunə|subscriptions|подпис|premium|apple|bolt/i, 'subscriptions'],
+  [/kirayə|kiraye|zal|idman|gym|üzvlük|uzvluk|müqavilə|contracts|договор|аренд/i, 'contracts'],
 ]
 
-const MONTH_NAME_RE = MONTHS_LOWER.join('|')
+const monthEntries = getLocalizedMonthAliases()
+const monthAliases = monthEntries.flatMap(({ month, aliases }) => aliases.map((alias) => ({ month, alias })))
+  .sort((a, b) => b.alias.length - a.alias.length)
+const MONTH_NAME_RE = monthAliases.map(({ alias }) => alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
 
 const CATEGORY_FROM_LABEL: Record<string, CategoryId> = {
-  abunələr: 'abune',
-  abuneler: 'abune',
-  abune: 'abune',
-  telekom: 'telekom',
-  kommunal: 'kommunal',
-  kredit: 'kredit',
-  'sığorta və sənədlər': 'sigorta',
-  'sigorta ve senedler': 'sigorta',
-  sigorta: 'sigorta',
-  müqavilələr: 'muqavile',
-  muqavileler: 'muqavile',
-  muqavile: 'muqavile',
+  abunələr: 'subscriptions',
+  abuneler: 'subscriptions',
+  подписки: 'subscriptions',
+  subscriptions: 'subscriptions',
+  telekom: 'telecom',
+  telecom: 'telecom',
+  связь: 'telecom',
+  kommunal: 'utilities',
+  utilities: 'utilities',
+  'коммунальные услуги': 'utilities',
+  kredit: 'loans',
+  loans: 'loans',
+  кредиты: 'loans',
+  кредит: 'loans',
+  'sığorta və sənədlər': 'insurance',
+  'insurance ve senedler': 'insurance',
+  'страхование и документы': 'insurance',
+  sigorta: 'insurance',
+  insurance: 'insurance',
+  müqavilələr: 'contracts',
+  muqavileler: 'contracts',
+  договоры: 'contracts',
+  contracts: 'contracts',
 }
 
 const REPEAT_FROM_LABEL: Record<string, Repeat> = {
   aylıq: 'monthly',
   ayliq: 'monthly',
+  ежемесячно: 'monthly',
   monthly: 'monthly',
+  həftəlik: 'weekly',
+  heftelik: 'weekly',
+  еженедельно: 'weekly',
+  weekly: 'weekly',
   illik: 'yearly',
+  ежегодно: 'yearly',
   yearly: 'yearly',
   birdəfəlik: 'once',
   birdefelik: 'once',
+  разовый: 'once',
   once: 'once',
 }
 
 function guessCategory(text: string): CategoryId {
-  return CATEGORY_KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'abune'
+  return CATEGORY_KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'subscriptions'
 }
 
 function guessRepeat(text: string, category: CategoryId): Repeat {
-  if (/illik|ildə|ilde/i.test(text)) return 'yearly'
-  if (/birdəfəlik|birdefelik/i.test(text)) return 'once'
-  if (/aylıq|ayliq/i.test(text)) return 'monthly'
-  return category === 'sigorta' ? 'yearly' : 'monthly'
+  if (/illik|ildə|ilde|ежегодн|yearly|annually/i.test(text)) return 'yearly'
+  if (/birdəfəlik|birdefelik|разов|one[- ]?time/i.test(text)) return 'once'
+  if (/həftəlik|heftelik|еженедел|weekly/i.test(text)) return 'weekly'
+  if (/aylıq|ayliq|ежемесяч|monthly/i.test(text)) return 'monthly'
+  return category === 'insurance' ? 'yearly' : 'monthly'
 }
 
 function parseAzDate(text: string): string | null {
@@ -85,10 +110,10 @@ function parseAzDate(text: string): string | null {
     const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3]
     return `${year}-${month}-${day}`
   }
-  const match = lower.match(new RegExp(`(\\d{1,2})\\s+(${MONTH_NAME_RE})[a-zəığöşüç]*(?:\\s+(\\d{4}))?`, 'i'))
+  const match = lower.match(new RegExp(`(\\d{1,2})\\s+(${MONTH_NAME_RE})(?:\\s+(\\d{4}))?`, 'iu'))
   if (!match) return null
-  const monthIndex = MONTHS_LOWER.findIndex((m) => match[2].startsWith(m.slice(0, 3)))
-  if (monthIndex === -1) return null
+  const monthIndex = monthAliases.find(({ alias }) => alias === match[2])?.month
+  if (monthIndex === undefined) return null
   const today = startOfToday()
   const year = match[3] ? Number(match[3]) : today.getFullYear()
   const date = new Date(year, monthIndex, Number(match[1]))
@@ -98,8 +123,8 @@ function parseAzDate(text: string): string | null {
 
 function cleanPaymentName(text: string): string {
   const monthPattern = new RegExp(
-    `\\b\\d{1,2}\\s+(${MONTH_NAME_RE})[a-zəığöşüç]*\\s*(?:\\d{4})?\\b`,
-    'gi',
+    `\\d{1,2}\\s+(${MONTH_NAME_RE})(?:\\s*\\d{4})?`,
+    'giu',
   )
   const name = text
     .replace(/[\d.,]+\s*(?:azn|₼|manat)/gi, ' ')
@@ -150,6 +175,10 @@ function nextDueDate(isoDate: string, repeat: Repeat): string {
   const today = startOfToday()
   let date = parseISO(isoDate)
   if (date > today) return isoDate
+  if (repeat === 'weekly') {
+    while (date <= today) date.setDate(date.getDate() + 7)
+    return toISO(date)
+  }
   const stepMonths = repeat === 'yearly' ? 12 : 1
   for (let i = 0; i < 120 && date <= today; i++) {
     date = addCalendarMonths(date, stepMonths)
@@ -202,7 +231,10 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary)
 }
 
-function fallbackParseText(text: string): PaymentDraft[] {
+type AppLocale = 'az' | 'en' | 'ru'
+const messages = { az: azMessages, en: enMessages, ru: ruMessages }
+
+function fallbackParseText(text: string, locale: AppLocale): PaymentDraft[] {
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean)
   const parsed = lines
     .map((line): PaymentDraft | null => {
@@ -212,7 +244,7 @@ function fallbackParseText(text: string): PaymentDraft[] {
       const name = cleanPaymentName(line)
       const repeat = guessRepeat(line, category)
       return {
-        name: name || 'Yeni ödəniş',
+        name: name || messages[locale].addDialog.fallbackValues.newPayment,
         amount,
         category,
         repeat,
@@ -224,32 +256,32 @@ function fallbackParseText(text: string): PaymentDraft[] {
   if (parsed.length > 0) return parsed
 
   return [
-    { name: 'Bolt Plus abunəsi', amount: 4.99, category: 'abune', repeat: 'monthly', nextDate: isoFromToday(14) },
-    { name: 'Bakcell tarif', amount: 12, category: 'telekom', repeat: 'monthly', nextDate: isoFromToday(8) },
+    { name: messages[locale].addDialog.fallbackValues.membership, amount: 4.99, category: 'subscriptions', repeat: 'monthly', nextDate: isoFromToday(14) },
+    { name: messages[locale].addDialog.fallbackValues.tariff, amount: 12, category: 'telecom', repeat: 'monthly', nextDate: isoFromToday(8) },
   ]
 }
 
-function fallbackParseReceipt(file: File): PaymentDraft[] {
+function fallbackParseReceipt(file: File, locale: AppLocale): PaymentDraft[] {
   const fromName = file.name.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ')
   return [
     {
-      name: /qəbz|receipt|img|image|photo|screenshot/i.test(fromName) ? 'Azərişıq qəbzi' : fromName.slice(0, 40),
+      name: /qəbz|receipt|квитанц|img|image|photo|screenshot/i.test(fromName) ? messages[locale].addDialog.fallbackValues.receipt : fromName.slice(0, 40),
       amount: 34.6,
-      category: 'kommunal',
+      category: 'utilities',
       repeat: 'monthly',
       nextDate: isoFromToday(20),
     },
   ]
 }
 
-function fallbackParseQuick(text: string): PaymentDraft[] {
+function fallbackParseQuick(text: string, locale: AppLocale): PaymentDraft[] {
   const parts = text.split(',').map((p) => p.trim()).filter(Boolean)
   const category = guessCategory(text)
   const name = cleanPaymentName(parts[0] || text)
   const repeat = guessRepeat(text, category)
   return [
     {
-      name: name || 'Yeni ödəniş',
+      name: name || messages[locale].addDialog.fallbackValues.newPayment,
       amount: parseAmount(text) ?? 0,
       category,
       repeat,
@@ -260,85 +292,81 @@ function fallbackParseQuick(text: string): PaymentDraft[] {
 
 function fallbackCancelHelp(item: Payment, locale: 'az' | 'en' | 'ru' = 'az'): CancelHelp {
   const provider = item.provider ?? item.name
-  const isOnline = item.category === 'abune'
-  const copy = locale === 'en' ? {
-    online: [`Sign in to your ${provider} account on the app or website.`, 'Open Account or Subscription settings.', 'Choose Cancel subscription and confirm.', 'Save the confirmation email and check that renewal is off.', 'Check your card statement on the next payment date.'],
-    offline: [`Find your contract number for ${provider} on a receipt or contract.`, 'Email the letter below or deliver it to the provider office.', 'Keep the receipt number or a signed copy.', 'Also turn off automatic payment in your banking app.', 'Check your statement after the final payment date.'],
-    dear: `Dear ${provider} team,`, request: `I, [Full name], request cancellation of my contract/subscription for "${item.name}".`, number: 'Contract / account number: [number]', phone: 'Contact phone: [phone]', stop: `Please stop charges from the next payment date (${item.nextDate}) and send written confirmation of cancellation.`, regards: 'Sincerely,', name: '[Full name]', date: '[Date]',
-  } : locale === 'ru' ? {
-    online: [`Войдите в аккаунт ${provider} в приложении или на сайте.`, 'Откройте настройки аккаунта или подписки.', 'Выберите отмену подписки и подтвердите действие.', 'Сохраните письмо с подтверждением и проверьте отключение продления.', 'Проверьте выписку по карте в дату следующего платежа.'],
-    offline: [`Найдите номер договора с ${provider} в квитанции или договоре.`, 'Отправьте письмо ниже по электронной почте или передайте в офис.', 'Сохраните номер обращения или подписанную копию.', 'Отключите автоплатёж также в банковском приложении.', 'Проверьте выписку после даты последнего платежа.'],
-    dear: `Уважаемая команда ${provider}!`, request: `Я, [ФИО], прошу расторгнуть договор/отменить подписку на услугу «${item.name}».`, number: 'Номер договора / счёта: [номер]', phone: 'Контактный телефон: [телефон]', stop: `Прошу прекратить списания со следующей даты платежа (${item.nextDate}) и прислать письменное подтверждение отмены.`, regards: 'С уважением,', name: '[ФИО]', date: '[Дата]',
-  } : {
-    online: [`${provider} hesabına daxil ol (tətbiq və ya sayt).`, '«Hesab» və ya «Abunəlik» bölməsini aç.', '«Abunəliyi ləğv et» düyməsini seç və təsdiqlə.', 'Təsdiq e-poçtunu saxla və yenilənmənin dayandığını yoxla.', 'Kart çıxarışını növbəti ödəniş tarixində yoxla.'],
-    offline: [`${provider} ilə müqavilə nömrəni qəbz və ya müqavilədə tap.`, 'Aşağıdakı məktubu e-poçtla göndər və ya ofisə apar.', 'Qəbul nömrəsini və ya imzalı surəti saxla.', 'Avtomatik ödənişi bank tətbiqində də dayandır.', 'Son ödəniş tarixindən sonra çıxarışı yoxla.'],
-    dear: `Hörmətli ${provider} komandası,`, request: `Mən, [Ad Soyad], "${item.name}" xidməti üzrə müqaviləmin/abunəliyimin ləğv edilməsini xahiş edirəm.`, number: 'Müqavilə / hesab nömrəsi: [nömrə]', phone: 'Əlaqə telefonu: [telefon]', stop: `Növbəti ödəniş tarixindən (${item.nextDate}) etibarən məbləğ tutulmamasını və ləğvin yazılı təsdiqini göndərməyinizi xahiş edirəm.`, regards: 'Hörmətlə,', name: '[Ad Soyad]', date: '[Tarix]',
-  }
-  const steps = isOnline ? copy.online : copy.offline
-  const letter = `${copy.dear}\n\n${copy.request}\n\n${copy.number}\n${copy.phone}\n\n${copy.stop}\n\n${copy.regards}\n${copy.name}\n${copy.date}`
+  const nextDate = formatCalendarDate(item.nextDate, locale, { day: 'numeric', month: 'long', year: 'numeric' })
+  const isOnline = item.category === 'subscriptions'
+  const copy = messages[locale].cancelDialog.fallbackCopy
+  const interpolate = (value: string) => value
+    .replace(/\{provider\}/g, provider)
+    .replace(/\{name\}/g, item.name)
+    .replace(/\{nextDate\}/g, nextDate)
+  const steps = (isOnline ? copy.onlineSteps : copy.offlineSteps).map(interpolate)
+  const letter = [copy.dear, copy.request, copy.number, copy.phone, copy.stop, copy.regards, copy.signature, copy.date]
+    .map(interpolate)
+    .join('\n\n')
 
   return { steps, letter }
 }
 
-export async function parseText(text: string): Promise<PaymentDraft[]> {
+export async function parseText(text: string, locale: AppLocale = 'az'): Promise<PaymentDraft[]> {
   try {
-    const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
+    const data = await postJson<{ items?: unknown[] }>('/api/parse', { text, locale })
     if (!data) {
       lastAiStatus = 'fallback'
-      return fallbackParseText(text)
+      return fallbackParseText(text, locale)
     }
     const items = mapParseItems(data.items ?? [])
     lastAiStatus = 'ai'
     return items
   } catch {
     lastAiStatus = 'fallback'
-    return fallbackParseText(text)
+    return fallbackParseText(text, locale)
   }
 }
 
-export async function parseReceipt(file: File): Promise<PaymentDraft[]> {
+export async function parseReceipt(file: File, locale: AppLocale = 'az'): Promise<PaymentDraft[]> {
   try {
     const imageBase64 = await fileToBase64(file)
     const data = await postJson<{ items?: unknown[] }>('/api/parse', {
       imageBase64,
       mimeType: file.type || 'image/jpeg',
+      locale,
     })
     if (!data) {
       lastAiStatus = 'fallback'
-      return fallbackParseReceipt(file)
+      return fallbackParseReceipt(file, locale)
     }
     const items = mapParseItems(data.items ?? [])
     lastAiStatus = 'ai'
     return items
   } catch {
     lastAiStatus = 'fallback'
-    return fallbackParseReceipt(file)
+    return fallbackParseReceipt(file, locale)
   }
 }
 
-export async function parseQuick(text: string): Promise<PaymentDraft[]> {
+export async function parseQuick(text: string, locale: AppLocale = 'az'): Promise<PaymentDraft[]> {
   try {
-    const data = await postJson<{ items?: unknown[] }>('/api/parse', { text })
+    const data = await postJson<{ items?: unknown[] }>('/api/parse', { text, locale })
     if (!data) {
       lastAiStatus = 'fallback'
-      return fallbackParseQuick(text)
+      return fallbackParseQuick(text, locale)
     }
     const items = mapParseItems(data.items ?? [])
     lastAiStatus = 'ai'
     return items
   } catch {
     lastAiStatus = 'fallback'
-    return fallbackParseQuick(text)
+    return fallbackParseQuick(text, locale)
   }
 }
 
-export async function generateCancelHelp(item: Payment, locale: 'az' | 'en' | 'ru' = 'az', displayName = item.name): Promise<CancelHelp> {
-  const localizedItem = { ...item, name: displayName }
+export async function generateCancelHelp(item: Payment, locale: AppLocale = 'az', displayName = item.name, displayProvider = item.provider ?? displayName, displayCategory: string = item.category): Promise<CancelHelp> {
+  const localizedItem = { ...item, name: displayName, provider: displayProvider }
   try {
     const data = await postJson<CancelHelp>('/api/cancel', {
       name: displayName,
       amount: item.amount,
-      category: item.category,
+      category: displayCategory,
       locale,
     })
     if (!data) {
@@ -362,8 +390,10 @@ export async function generateCancelHelp(item: Payment, locale: 'az' | 'en' | 'r
 export async function getWeeklySummary(
   payments: Payment[],
   today: Date,
+  localizedText: (key: string, values?: Record<string, string | number>) => string,
   locale: 'az' | 'en' | 'ru' = 'az',
   localizedName: (payment: Payment) => string = (payment) => payment.name,
+  localizedCategory: (payment: Payment) => string = (payment) => payment.category,
 ): Promise<WeeklySummary> {
   const stats = getNext7DaysStats(payments, today)
   const biggest = [...stats.items].sort((a, b) => b.payment.amount - a.payment.amount)[0]
@@ -374,23 +404,24 @@ export async function getWeeklySummary(
     count: stats.count,
     total: stats.total,
     deadlineCount: stats.deadlineCount,
-    biggestPayment: biggest ? { name: localizedName(biggest.payment), amount: biggest.payment.amount } : null,
+    biggestPayment: biggest ? { name: localizedName(biggest.payment), amount: biggest.payment.amount, category: localizedCategory(biggest.payment) } : null,
     nearestDeadline: nearestDeadline
-      ? { name: localizedName(nearestDeadline.payment), daysLeft: daysUntil(nearestDeadline.date, today) }
+      ? { name: localizedName(nearestDeadline.payment), daysLeft: daysUntil(nearestDeadline.date, today), category: localizedCategory(nearestDeadline.payment) }
       : null,
   }
-  const fallbackHeadline = locale === 'en'
-    ? `Next 7 days: ${stats.count} payments, ${stats.deadlineCount} deadlines.`
-    : locale === 'ru'
-      ? `Следующие 7 дней: платежей — ${stats.count}, сроков — ${stats.deadlineCount}.`
-      : `Növbəti 7 gündə ${stats.count} ödəniş, ${stats.deadlineCount} son tarix var.`
+  const fallbackHeadline = localizedText('headline', {
+    payments: localizedText('paymentCount', { count: stats.count }),
+    deadlines: localizedText('deadlineCount', { count: stats.deadlineCount }),
+  })
   const fallbackBody = biggest
-    ? locale === 'en'
-      ? `Plan ${formatAmount(stats.total, locale)} in your weekly budget. The largest payment is ${localizedName(biggest.payment)} (${formatAmount(biggest.payment.amount, locale)})${nearestDeadline ? `; ${localizedName(nearestDeadline.payment)} is due in ${daysUntil(nearestDeadline.date, today)} days` : ''}.`
-      : locale === 'ru'
-        ? `Запланируйте ${formatAmount(stats.total, locale)} в бюджете на неделю. Самый крупный платёж — ${localizedName(biggest.payment)} (${formatAmount(biggest.payment.amount, locale)})${nearestDeadline ? `; до срока «${localizedName(nearestDeadline.payment)}» осталось ${daysUntil(nearestDeadline.date, today)} дн.` : ''}.`
-        : `${formatAmount(stats.total, locale)} məbləğini həftəlik büdcəndə nəzərdə saxla. Ən böyük ödəniş ${localizedName(biggest.payment)} üçündür (${formatAmount(biggest.payment.amount, locale)})${nearestDeadline ? `, ${localizedName(nearestDeadline.payment)} üçün isə ${daysUntil(nearestDeadline.date, today)} gün qalıb` : ''}.`
-    : locale === 'en' ? 'No payments are due in the next 7 days. Enjoy a lighter week.' : locale === 'ru' ? 'В следующие 7 дней платежей нет. Наслаждайтесь спокойной неделей.' : 'Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan.'
+    ? localizedText(nearestDeadline ? 'budgetWithDeadline' : 'budget', {
+      amount: formatAmount(payload.total, locale),
+      name: localizedName(biggest.payment),
+      paymentAmount: formatAmount(biggest.payment.amount, locale),
+      deadlineName: nearestDeadline ? localizedName(nearestDeadline.payment) : '',
+      days: nearestDeadline ? daysUntil(nearestDeadline.date, today) : 0,
+    })
+    : localizedText('empty')
 
   try {
     const result = await postJson<{ title?: unknown; body?: unknown }>('/api/weekly', { stats: payload, locale })

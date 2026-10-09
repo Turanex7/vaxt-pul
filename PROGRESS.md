@@ -1,5 +1,13 @@
 # PROGRESS.md — PayPulse
 
+## 2026-10-09 — Köməkçi AI chatbox
+- Header-dən asılı olmayan, bütün locale səhifələrində görünən üzən chat düyməsi və panel əlavə edildi. Desktop-da 380×560, mobildə tam ekran; mesajlar React state-də qalır, boş söhbətdə dörd lokalizə edilmiş təklif var.
+- Klaviatura əlçatanlığı əlavə edildi: dialog semantikası, aria label-lər, açıldıqda input fokuslanması, Tab fokus dairəsi, Esc ilə bağlanma və fokusun düyməyə qaytarılması. Yeni mesaj gələndə mesaj siyahısı aşağı sürüşür.
+- `ChatDataProvider` dashboard-un cari ödənişlərini və gününü widget-ə ötürür. Sorğuda yalnız ad, məbləğ, növbəti tarix, kateqoriya, təkrar növü, locale və söhbət mesajları göndərilir.
+- `app/api/chat/route.ts` serverdə eyni `GEMINI_API_KEY`/Gemini REST provayderindən istifadə edir; açar client bundle-ə çıxmır. IP üzrə dəqiqədə 10 sorğu, istifadəçi mesajında 500 simvol həddi, lokal növbəti 7 gün/aylıq cəm fallback-i və AZ/EN/RU xəta cavabları var. Provider xətası server log-una yazılır, açar maskalanır.
+- `messages/az.json`, `en.json`, `ru.json` chat UI və fallback mətnləri ilə genişləndirildi; `lib/gemini.ts` mətn cavabı üçün server helper-i aldı.
+- Yoxlama: `npm run lint` uğurlu; `npm run build` uğurlu, `/api/chat` dinamik route kimi yaradıldı.
+
 ## 2026-10-09 — Weekly API 500, fallback və client davamlılığı
 - Əvvəlki `PROGRESS.md` qeydi weekly xülasə üçün yalnız client fallback-i qeyd edirdi; `app/api/weekly/route.ts` Gemini xətasını 500 kimi qaytarırdı. Konfiqurasiya yoxlamasında `.env.local` və server kodunda `GEMINI_API_KEY` adının uyğunluğu təsdiqləndi; SDK istifadə olunmur, server tərəfində birbaşa `fetch` edilir.
 - Canlı POST ilə 500 səbəbi aşkarlandı: `gemini-2.5-flash` Gemini API-dən HTTP 404 qaytarırdı. Google-un hazırkı sənədlərində 2.5 modellərinə girişin məhdudlaşdırıldığı qeyd olunur. Model `gemini-3.8-flash` ilə əvəz edildi, Gemini 3-də dəstəklənməyən sampling parametrini çıxardım. Yeni modelə canlı sorğu zamanı Google API HTTP 503 qaytardı; route AZ/EN/RU fallback xülasəsini HTTP 200 ilə qaytarır. Xətanın statusu və mesajı log olunur, API açarı maskalanır.
@@ -161,6 +169,18 @@
 ---
 
 ## C. İş jurnalı
+
+### 2026-10-09 — az/en/ru i18n ardıcıllığı və format audit-i
+- **Auditdə tapılanlar:** `lib/format.ts`-də dilə uyğun olmayan ay/formatlayıcı yolları; `lib/mock-data.ts`-də demo adlarının yalnız AZ mətn kimi saxlanması; state-dən göstərilən category/repeat dəyərlərinin mətnə bağlı qalması; `lib/api.ts`, `app/api/weekly/route.ts`, `app/api/chat/route.ts`, `app/api/parse/route.ts`, `app/api/cancel/route.ts` daxilində lokal fallback və AI prompt-larında qarışıq dil; `lib/ics.ts`-də sabit AZ qeydlər; weekly/cancel SWR açarlarında locale-in olmaması.
+- **Səbəb:** Təmiz browser testində Node/SSR `az-AZ` formatını düzgün verirdi, amma browser-in Intl `az-AZ`-ni ingilis rəqəm/datetime formatına salırdı. `559,77 AZN`-in hydration zamanı `AZN 559.77`-ə çevrilməsi və `M10 11` tarixləri buna görə yaranırdı.
+- **Tarix/rəqəm audit-i:** Formatlama `lib/format.ts`-də mərkəzləşdirildi, locale açıq ötürülür; `Intl.NumberFormat.formatToParts()` locale separators yoxlanılır və runtime uyğun deyilsə sabit AZ/EN/RU format fallback-i işləyir. Ay adları `messages/*`-də nominativ və tarix daxilindəki formalarla saxlanır. `YYYY-MM-DD` `parseISO()` ilə yerli tarix kimi parse olunur; tarixlər `Asia/Baku` əsasında hesablanır. Qalan `Intl.PluralRules` server tərəfində locale açıq verilməklə plural seçir. `new Date()` çağırışları seed referansında, tarix helper-lərində və ICS event handler-indədir; render zamanı təsadüfi ID yaradılmır.
+- **Dəyişdi:**
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/format.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/hooks/use-localized-format.ts` — AZ/EN/RU məbləğ, tarix, ay-il formatı; Baku timezone; həftəlik təkrar hesablaması.
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/mock-data.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/payment-migration.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/payment-name.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/hooks/use-payment-name.ts` — kateqoriya/təkrar enum-ları, demo adı/provider açarları və köhnə localStorage mətnlərinin miqrasiyası.
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/radar.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/components/dashboard/` — Radar, ödəniş, təqvim, qrafik və xülasə mətnlərinin cari locale-dən renderi.
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/app/api/`, `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/api.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/lib/ics.ts`, `/Users/turan/Desktop/vaxt-and-pul-web-app/components/chat/` — locale AI sorğularına ötürülür; prompt/fallback-lar cari dilə uyğunlaşır; SWR açarları locale-i ehtiva edir.
+  - `/Users/turan/Desktop/vaxt-and-pul-web-app/messages/az.json`, `en.json`, `ru.json` — ay adları və digər mətnlər lokallaşdırıldı; `/Users/turan/Desktop/vaxt-and-pul-web-app/scripts/check-message-keys.mjs` 298 message leaf key və ICU placeholder-inin 3 dildə eyni olduğunu yoxlayır.
+- **Yoxlama:** `npm run lint`, `npx tsc --noEmit`, `npm run check:i18n`, `npm run build` keçdi. Fresh browser sessiyasında `/az`, `/en`, `/ru` yoxlandı: format nümunələri uyğun olaraq `11 oktyabr / 559,77 AZN`, `October 11 / AZN 559.77`, `11 октября / 559,77 AZN` oldu; hydration mismatch görünmədi. Chat və weekly Gemini fallback də locale-a uyğun işləyir (Gemini quota xətası 200 fallback cavabına çevrildi).
 
 ### 2026-10-09 ~15:21 — Dinamik Radar + PayPulse
 - **Nə / niyə:** Radar mock mətnləri `payments` state-indən hesablanmalı idi; sayt adı PayPulse.

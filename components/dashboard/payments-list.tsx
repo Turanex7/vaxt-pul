@@ -2,7 +2,7 @@
 
 import { CalendarPlus, Check, Ellipsis, FileX2, Inbox, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ import { buildIcs } from '@/lib/ics'
 import { CategoryBadge, CategoryDot } from './category-badge'
 import { Panel, SectionHeading } from './panel'
 import { useLocalizedFormat } from '@/hooks/use-localized-format'
-import { usePaymentName } from '@/hooks/use-payment-name'
+import { usePaymentName, usePaymentProvider } from '@/hooks/use-payment-name'
 
 interface PaymentsListProps {
   payments: Payment[]
@@ -34,6 +34,8 @@ interface PaymentsListProps {
 
 export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, onMarkPaid }: PaymentsListProps) {
   const t = useTranslations()
+  const locale = useLocale() as 'az' | 'en' | 'ru'
+  const paymentProvider = usePaymentProvider()
   const { amount, dayMonth } = useLocalizedFormat()
   const paymentName = usePaymentName()
   const [filter, setFilter] = useState<CategoryId | 'all'>('all')
@@ -86,8 +88,8 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
                   <tr key={p.id} className="transition-colors hover:bg-muted/50">
                     <td className="px-6 py-3.5">
                       <p className="font-medium">{paymentName(p)}</p>
-                      {p.provider && p.provider.trim().toLowerCase() !== p.name.trim().toLowerCase() && (
-                        <p className="text-sm text-muted-foreground">{p.provider}</p>
+                      {paymentProvider(p) && paymentProvider(p)!.trim().toLowerCase() !== paymentName(p).trim().toLowerCase() && (
+                        <p className="text-sm text-muted-foreground">{paymentProvider(p)}</p>
                       )}
                     </td>
                     <td className="px-3 py-3.5"><CategoryBadge category={p.category} /></td>
@@ -96,7 +98,7 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
                     <td className="px-3 py-3.5">{t(`repeat.${p.repeat}`)}</td>
                     <td className="px-3 py-3.5"><StatusBadge payment={p} today={today} /></td>
                     <td className="px-3 py-3.5">
-                      <RowMenu payment={p} name={paymentName(p)} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
+                    <RowMenu payment={p} name={paymentName(p)} locale={locale} categoryName={t(`categories.${p.category}`)} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
                     </td>
                   </tr>
                 ))}
@@ -119,7 +121,7 @@ export function PaymentsList({ payments, today, onEdit, onCancelHelp, onDelete, 
                       <StatusBadge payment={p} today={today} />
                     </div>
                   </div>
-                  <RowMenu payment={p} name={paymentName(p)} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
+                      <RowMenu payment={p} name={paymentName(p)} locale={locale} categoryName={t(`categories.${p.category}`)} onEdit={onEdit} onCancelHelp={onCancelHelp} onDelete={onDelete} onMarkPaid={onMarkPaid} />
                 </li>
               ))}
             </ul>
@@ -183,7 +185,7 @@ function StatusBadge({ payment, today }: { payment: Payment; today: Date }) {
   )
 }
 
-function RowMenu({ payment, name, onEdit, onCancelHelp, onDelete, onMarkPaid }: { payment: Payment; name: string } & Omit<PaymentsListProps, 'payments' | 'today'>) {
+function RowMenu({ payment, name, locale, categoryName, onEdit, onCancelHelp, onDelete, onMarkPaid }: { payment: Payment; name: string; locale: 'az' | 'en' | 'ru'; categoryName: string } & Omit<PaymentsListProps, 'payments' | 'today'>) {
   const t = useTranslations()
   const addToCalendar = () => {
     const fileName = payment.name
@@ -192,7 +194,7 @@ function RowMenu({ payment, name, onEdit, onCancelHelp, onDelete, onMarkPaid }: 
       .replace(/[əƏ]/g, 'e')
       .replace(/[^a-zA-Z0-9_-]+/g, '-')
       .replace(/^-+|-+$/g, '') || 'odenis'
-    const blob = new Blob([buildIcs(payment)], { type: 'text/calendar;charset=utf-8' })
+    const blob = new Blob([buildIcs({ ...payment, name }, locale, { description: t('ics.description', { category: categoryName }), oneDay: t('ics.oneDay', { name }), sevenDays: t('ics.sevenDays', { name }) })], { type: 'text/calendar;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

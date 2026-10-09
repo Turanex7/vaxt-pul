@@ -53,8 +53,8 @@ function RadarCard({ insight, payments, onViewDuplicates, onRecognize }: { insig
   }
   for (const key of ['amount', 'previousAmount', 'savings']) if (typeof values[key] === 'number') values[key] = amount(values[key] as number)
   for (const key of ['start', 'end']) if (typeof values[key] === 'string') values[key] = dayMonth(values[key] as string)
-  const title = insight.titleKey ? t(insight.titleKey, values) : insight.title
-  const description = insight.descriptionKey ? t(insight.descriptionKey, values) : insight.description
+  const title = t(insight.titleKey, values)
+  const description = t(insight.descriptionKey, values)
   return <article className={cn('flex h-full flex-col gap-3 rounded-2xl border-l-4 bg-card p-5 shadow-[0_1px_2px_rgba(30,27,75,0.04),0_8px_24px_-12px_rgba(30,27,75,0.12)] ring-1 ring-border/70', style.card)}>
     <div className="flex items-start gap-3"><span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', style.icon)}><Icon className="size-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{label}</p><h3 className="text-lg leading-snug font-semibold text-balance">{title}</h3></div></div>
     <p className="text-base text-muted-foreground text-pretty">{description}</p>

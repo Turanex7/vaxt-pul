@@ -5,6 +5,8 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl'
 import { setRequestLocale, getTranslations } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { Toaster } from '@/components/ui/sonner'
+import { ChatDataProvider } from '@/components/chat/chat-data-context'
+import { ChatWidget } from '@/components/chat/chat-widget'
 import { routing, type AppLocale } from '@/i18n/routing'
 import '../globals.css'
 
@@ -54,7 +56,12 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <ChatDataProvider>
+            {children}
+            <ChatWidget />
+          </ChatDataProvider>
+        </NextIntlClientProvider>
         <Toaster position="top-center" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

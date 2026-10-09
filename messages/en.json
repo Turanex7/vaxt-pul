@@ -56,12 +56,12 @@
     "tomorrow": "Tomorrow"
   },
   "categories": {
-    "abune": "Subscriptions",
-    "telekom": "Telecom",
-    "kommunal": "Utilities",
-    "kredit": "Loans",
-    "sigorta": "Insurance and documents",
-    "muqavile": "Contracts",
+    "subscriptions": "Subscriptions",
+    "telecom": "Telecom",
+    "utilities": "Utilities",
+    "loans": "Loans",
+    "insurance": "Insurance and documents",
+    "contracts": "Contracts",
     "heading": "By category",
     "monthlyAverage": "Average monthly spending",
     "empty": "No payments added yet.",
@@ -69,6 +69,8 @@
     "perMonth": "AZN / month"
   },
   "repeat": {
+    "weekly": "Weekly",
+    "perWeek": "week",
     "monthly": "Monthly",
     "yearly": "Yearly",
     "once": "One time",
@@ -104,6 +106,22 @@
       "inspection": "Vehicle inspection",
       "gym": "Gym membership",
       "rent": "Rent"
+    },
+    "providerNames": {
+      "netflix": "Netflix",
+      "youtube": "Google",
+      "spotify": "Spotify",
+      "azercell": "Azercell",
+      "internet": "CityNet",
+      "electricity": "Azərişıq",
+      "gas": "Azəriqaz",
+      "water": "Azərsu",
+      "loan": "Kapital Bank",
+      "installment": "Birmarket",
+      "insurance": "Paşa Sığorta",
+      "inspection": "DYP",
+      "gym": "Sport Life",
+      "rent": "Landlord"
     }
   },
   "calendar": {
@@ -155,7 +173,32 @@
     "paymentCount": "{count, plural, one {# payment} other {# payments}}",
     "deadlineCount": "{count, plural, one {# due date} other {# due dates}}",
     "loadError": "Summary could not be loaded",
-    "retry": "Try again"
+    "retry": "Try again",
+    "example": "Next 7 days: 5 payments, 1 deadline.",
+    "serverFallback": {
+      "paymentCount": {
+        "one": "{count} payment",
+        "other": "{count} payments",
+        "few": "{count} payments",
+        "many": "{count} payments"
+      },
+      "deadlineCount": {
+        "one": "{count} deadline",
+        "other": "{count} deadlines",
+        "few": "{count} deadlines",
+        "many": "{count} deadlines"
+      },
+      "dayCount": {
+        "one": "{count} day",
+        "other": "{count} days",
+        "few": "{count} days",
+        "many": "{count} days"
+      },
+      "headline": "Next 7 days: {payments}, {deadlines}.",
+      "budget": "Set aside {amount} for the next 7 days. The largest payment is {biggest} ({paymentAmount}){deadlineClause}.",
+      "deadlineClause": "; {name} is due in {days}",
+      "empty": "No payments are due in the next 7 days. Enjoy a lighter week."
+    }
   },
   "simulator": {
     "title": "What if?",
@@ -191,7 +234,13 @@
     "paymentNumber": "Payment {number}",
     "remove": "Remove",
     "confirmCount": "Confirm ({count})",
-    "quickSubmit": "Add payment"
+    "quickSubmit": "Add payment",
+    "fallbackValues": {
+      "newPayment": "New payment",
+      "membership": "Bolt Plus subscription",
+      "tariff": "Bakcell plan",
+      "receipt": "Azərişıq receipt"
+    }
   },
   "editDialog": {
     "title": "Edit payment",
@@ -206,7 +255,31 @@
     "copy": "Copy",
     "copied": "Copied",
     "fallback": "AI is unavailable. Simple recognition mode was used.",
-    "service": "service"
+    "service": "service",
+    "fallbackCopy": {
+      "onlineSteps": [
+        "Sign in to your {provider} account on the app or website.",
+        "Open Account or Subscription settings.",
+        "Choose Cancel subscription and confirm.",
+        "Save the confirmation email and check that renewal is off.",
+        "Check your card statement on the next payment date."
+      ],
+      "offlineSteps": [
+        "Find your contract number for {provider} on a receipt or contract.",
+        "Email the letter below or deliver it to the provider office.",
+        "Keep the receipt number or a signed copy.",
+        "Also turn off automatic payment in your banking app.",
+        "Check your statement after the final payment date."
+      ],
+      "dear": "Dear {provider} team,",
+      "request": "I, [Full name], request cancellation of my contract/subscription for \"{name}\".",
+      "number": "Contract / account number: [number]",
+      "phone": "Contact phone: [phone]",
+      "stop": "Please stop charges from the next payment date ({nextDate}) and send written confirmation of cancellation.",
+      "regards": "Sincerely,",
+      "signature": "[Full name]",
+      "date": "[Date]"
+    }
   },
   "toast": {
     "resetConfirm": "Reset demo data and remove all changes?",
@@ -232,5 +305,70 @@
   },
   "actions": {
     "all": "All"
+  },
+  "chat": {
+    "title": "PayPulse assistant",
+    "close": "Close chat",
+    "clear": "Clear",
+    "empty": "Ask a question about your payments. I can help you review them.",
+    "suggestionsTitle": "Try asking",
+    "inputLabel": "Your message",
+    "placeholder": "Type a question…",
+    "send": "Send",
+    "typing": "Typing…",
+    "unavailable": "AI is unavailable right now. Please try again shortly.",
+    "tooLong": "Your message must be under 500 characters.",
+    "rateLimit": "Too many messages in one minute. Please try again shortly.",
+    "weeklyFallback": "There are {paymentCount} in the next 7 days, totaling {amount}.",
+    "monthFallback": "Your remaining payments this month total {amount}.",
+    "noneUpcoming": "There are no payments in the next 7 days.",
+    "clearLabel": "Clear conversation",
+    "suggestionWeekly": "What will I pay in the next 7 days?",
+    "suggestionLargest": "What is my biggest expense?",
+    "suggestionSubscriptions": "Which subscriptions could I cancel?",
+    "suggestionMonth": "How much is left this month?",
+    "paymentCount": {
+      "one": "{count} payment",
+      "other": "{count} payments",
+      "few": "{count} payments",
+      "many": "{count} payments"
+    }
+  },
+  "ics": {
+    "description": "PayPulse payment reminder — {category}",
+    "oneDay": "{name} payment is due in 1 day.",
+    "sevenDays": "{name} deadline is in 7 days."
+  },
+  "formatting": {
+    "months": {
+      "standalone": {
+        "10": "October",
+        "11": "November",
+        "12": "December",
+        "01": "January",
+        "02": "February",
+        "03": "March",
+        "04": "April",
+        "05": "May",
+        "06": "June",
+        "07": "July",
+        "08": "August",
+        "09": "September"
+      },
+      "inDate": {
+        "10": "October",
+        "11": "November",
+        "12": "December",
+        "01": "January",
+        "02": "February",
+        "03": "March",
+        "04": "April",
+        "05": "May",
+        "06": "June",
+        "07": "July",
+        "08": "August",
+        "09": "September"
+      }
+    }
   }
 }

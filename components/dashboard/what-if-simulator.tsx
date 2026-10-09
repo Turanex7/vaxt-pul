@@ -24,7 +24,7 @@ export function WhatIfSimulator({ payments, highlightIds }: WhatIfSimulatorProps
   const { amount } = useLocalizedFormat()
   const paymentName = usePaymentName()
   const [disabledIds, setDisabledIds] = useState<Set<string>>(() => new Set())
-  const candidates = payments.filter((p) => p.autoRenew || p.category === 'abune')
+  const candidates = payments.filter((p) => p.autoRenew || p.category === 'subscriptions')
 
   const monthly = candidates
     .filter((p) => disabledIds.has(p.id))
@@ -71,7 +71,7 @@ export function WhatIfSimulator({ payments, highlightIds }: WhatIfSimulatorProps
                       {paymentName(p)}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {amount(p.amount)} / {p.repeat === 'yearly' ? repeat('perYear') : repeat('perMonth')}
+                  {amount(p.amount)} / {p.repeat === 'yearly' ? repeat('perYear') : p.repeat === 'weekly' ? repeat('perWeek') : repeat('perMonth')}
                       {highlighted && <span className="ml-2 font-semibold text-success">{t('overlap')}</span>}
                     </span>
                   </label>

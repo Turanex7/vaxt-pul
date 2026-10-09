@@ -51,6 +51,42 @@ export async function generateGeminiJson(parts: GeminiPart[]): Promise<unknown> 
   return JSON.parse(extractJson(text))
 }
 
+export async function generateGeminiText(systemInstruction: string, prompt: string): Promise<string> {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('GEMINI_API_KEY is missing')
+
+  const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 700 },
+    }),
+  })
+
+  if (!res.ok) {
+    const responseText = await res.text()
+    let providerMessage = responseText.trim()
+    try {
+      const errorBody = JSON.parse(responseText) as { error?: { message?: unknown } }
+      if (typeof errorBody.error?.message === 'string') providerMessage = errorBody.error.message
+    } catch {
+      // Preserve a plain-text provider error message for server logging.
+    }
+    const error = new Error(`Gemini request failed (${res.status}): ${providerMessage || res.statusText}`)
+    Object.assign(error, { status: res.status })
+    throw error
+  }
+
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+  }
+  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('').trim()
+  if (!text) throw new Error('Empty Gemini response')
+  return text
+}
+
 function extractJson(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
   if (fenced?.[1]) return fenced[1].trim()

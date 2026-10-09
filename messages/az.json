@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "PayPulse — ödənişlər və son tarixlər",
-    "description": "Növbəti 30 gündə nə qədər ödəyəcəyini və hansı tarixi qaçırmamalı olduğunu gör. Abunələr, kommunal, kredit və sığorta bir yerdə."
+    "description": "Növbəti 30 gündə nə qədər ödəyəcəyini və hansı tarixi qaçırmamalı olduğunu gör. Abunələr, utilities, loans və sığorta bir yerdə."
   },
   "language": {
     "az": "AZ",
@@ -56,12 +56,12 @@
     "tomorrow": "Sabah"
   },
   "categories": {
-    "abune": "Abunələr",
-    "telekom": "Telekom",
-    "kommunal": "Kommunal",
-    "kredit": "Kredit",
-    "sigorta": "Sığorta və sənədlər",
-    "muqavile": "Müqavilələr",
+    "subscriptions": "Abunələr",
+    "telecom": "Telekom",
+    "utilities": "Kommunal",
+    "loans": "Kredit",
+    "insurance": "Sığorta və sənədlər",
+    "contracts": "Müqavilələr",
     "heading": "Kateqoriyalar üzrə",
     "monthlyAverage": "Aylıq orta xərc",
     "empty": "Hələ heç bir ödəniş əlavə olunmayıb.",
@@ -69,6 +69,8 @@
     "perMonth": "AZN / ay"
   },
   "repeat": {
+    "weekly": "Həftəlik",
+    "perWeek": "həftə",
     "monthly": "Aylıq",
     "yearly": "İllik",
     "once": "Birdəfəlik",
@@ -104,6 +106,22 @@
       "inspection": "Texniki baxış",
       "gym": "İdman zalı üzvlüyü",
       "rent": "Kirayə"
+    },
+    "providerNames": {
+      "netflix": "Netflix",
+      "youtube": "Google",
+      "spotify": "Spotify",
+      "azercell": "Azercell",
+      "internet": "CityNet",
+      "electricity": "Azərişıq",
+      "gas": "Azəriqaz",
+      "water": "Azərsu",
+      "loan": "Kapital Bank",
+      "installment": "Birmarket",
+      "insurance": "Paşa Sığorta",
+      "inspection": "DYP",
+      "gym": "Sport Life",
+      "rent": "Ev sahibi"
     }
   },
   "calendar": {
@@ -155,7 +173,32 @@
     "paymentCount": "{count, plural, one {# ödəniş} other {# ödəniş}}",
     "deadlineCount": "{count, plural, one {# son tarix} other {# son tarix}}",
     "loadError": "Xülasə yüklənmədi",
-    "retry": "Yenidən cəhd et"
+    "retry": "Yenidən cəhd et",
+    "example": "Növbəti 7 gündə 5 ödəniş, 1 son tarix var.",
+    "serverFallback": {
+      "paymentCount": {
+        "one": "{count} ödəniş",
+        "other": "{count} ödəniş",
+        "few": "{count} ödəniş",
+        "many": "{count} ödəniş"
+      },
+      "deadlineCount": {
+        "one": "{count} son tarix",
+        "other": "{count} son tarix",
+        "few": "{count} son tarix",
+        "many": "{count} son tarix"
+      },
+      "dayCount": {
+        "one": "{count} gün",
+        "other": "{count} gün",
+        "few": "{count} gün",
+        "many": "{count} gün"
+      },
+      "headline": "Növbəti 7 gündə {payments}, {deadlines} var.",
+      "budget": "{amount} məbləğini növbəti 7 gün üçün nəzərdə saxla. Ən böyük ödəniş {biggest} ({paymentAmount}){deadlineClause}.",
+      "deadlineClause": "; {name} üçün {days} gün qalıb",
+      "empty": "Növbəti 7 gündə ödəniş yoxdur. Rahat həftədən yararlan."
+    }
   },
   "simulator": {
     "title": "Nə olar əgər?",
@@ -191,7 +234,13 @@
     "paymentNumber": "Ödəniş {number}",
     "remove": "Sil",
     "confirmCount": "Təsdiq et ({count})",
-    "quickSubmit": "Əlavə et"
+    "quickSubmit": "Əlavə et",
+    "fallbackValues": {
+      "newPayment": "Yeni ödəniş",
+      "membership": "Bolt Plus abunəsi",
+      "tariff": "Bakcell tarif",
+      "receipt": "Azərişıq qəbzi"
+    }
   },
   "editDialog": {
     "title": "Redaktə et",
@@ -206,7 +255,31 @@
     "copy": "Kopyala",
     "copied": "Kopyalandı",
     "fallback": "AI hazırda əlçatmazdır, sadə tanıma rejimi işlədi.",
-    "service": "xidmət"
+    "service": "xidmət",
+    "fallbackCopy": {
+      "onlineSteps": [
+        "{provider} hesabına daxil ol (tətbiq və ya sayt).",
+        "«Hesab» və ya «Abunəlik» bölməsini aç.",
+        "«Abunəliyi ləğv et» düyməsini seç və təsdiqlə.",
+        "Təsdiq e-poçtunu saxla və yenilənmənin dayandığını yoxla.",
+        "Kart çıxarışını növbəti ödəniş tarixində yoxla."
+      ],
+      "offlineSteps": [
+        "{provider} ilə müqavilə nömrəni qəbz və ya müqavilədə tap.",
+        "Aşağıdakı məktubu e-poçtla göndər və ya ofisə apar.",
+        "Qəbul nömrəsini və ya imzalı surəti saxla.",
+        "Avtomatik ödənişi bank tətbiqində də dayandır.",
+        "Son ödəniş tarixindən sonra çıxarışı yoxla."
+      ],
+      "dear": "Hörmətli {provider} komandası,",
+      "request": "Mən, [Ad Soyad], \"{name}\" xidməti üzrə müqaviləmin/abunəliyimin ləğv edilməsini xahiş edirəm.",
+      "number": "Müqavilə / hesab nömrəsi: [nömrə]",
+      "phone": "Əlaqə telefonu: [telefon]",
+      "stop": "Növbəti ödəniş tarixindən ({nextDate}) etibarən məbləğ tutulmamasını və ləğvin yazılı təsdiqini göndərməyinizi xahiş edirəm.",
+      "regards": "Hörmətlə,",
+      "signature": "[Ad Soyad]",
+      "date": "[Tarix]"
+    }
   },
   "toast": {
     "resetConfirm": "Demo datasını sıfırlamaq və bütün dəyişiklikləri silmək istəyirsən?",
@@ -232,5 +305,70 @@
   },
   "actions": {
     "all": "Hamısı"
+  },
+  "chat": {
+    "title": "PayPulse köməkçisi",
+    "close": "Söhbəti bağla",
+    "clear": "Təmizlə",
+    "empty": "Ödənişlərinlə bağlı sual ver. Məlumatları birlikdə nəzərdən keçirək.",
+    "suggestionsTitle": "Bunlardan soruşa bilərsən",
+    "inputLabel": "Mesajın",
+    "placeholder": "Sualını yaz…",
+    "send": "Göndər",
+    "typing": "Yazır…",
+    "unavailable": "AI hazırda əlçatmazdır. Bir az sonra yenidən cəhd et.",
+    "tooLong": "Mesaj 500 simvoldan qısa olmalıdır.",
+    "rateLimit": "Bir dəqiqədə çox mesaj göndərildi. Bir az sonra yenidən cəhd et.",
+    "weeklyFallback": "Növbəti 7 gündə {paymentCount} var. Cəmi {amount}.",
+    "monthFallback": "Bu ay qalan ödənişlərin cəmi {amount}.",
+    "noneUpcoming": "Növbəti 7 gündə ödəniş yoxdur.",
+    "clearLabel": "Söhbəti təmizlə",
+    "suggestionWeekly": "Növbəti 7 gündə nə ödəyəcəm?",
+    "suggestionLargest": "Ən böyük xərcim hansıdır?",
+    "suggestionSubscriptions": "Hansı abunəlikləri ləğv edə bilərəm?",
+    "suggestionMonth": "Bu ay nə qədər qalıb?",
+    "paymentCount": {
+      "one": "{count} ödəniş",
+      "other": "{count} ödəniş",
+      "few": "{count} ödəniş",
+      "many": "{count} ödəniş"
+    }
+  },
+  "ics": {
+    "description": "PayPulse ödəniş xatırlatması — {category}",
+    "oneDay": "{name} ödənişinə 1 gün qalıb.",
+    "sevenDays": "{name} son tarixinə 7 gün qalıb."
+  },
+  "formatting": {
+    "months": {
+      "standalone": {
+        "10": "Oktyabr",
+        "11": "Noyabr",
+        "12": "Dekabr",
+        "01": "Yanvar",
+        "02": "Fevral",
+        "03": "Mart",
+        "04": "Aprel",
+        "05": "May",
+        "06": "İyun",
+        "07": "İyul",
+        "08": "Avqust",
+        "09": "Sentyabr"
+      },
+      "inDate": {
+        "10": "oktyabr",
+        "11": "noyabr",
+        "12": "dekabr",
+        "01": "yanvar",
+        "02": "fevral",
+        "03": "mart",
+        "04": "aprel",
+        "05": "may",
+        "06": "iyun",
+        "07": "iyul",
+        "08": "avqust",
+        "09": "sentyabr"
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { CATEGORIES, formatAmount, parseISO, toISO } from './format'
+import { formatNumber, parseISO, toISO } from './format'
 import type { Payment } from './mock-data'
 
 function escapeIcsText(value: string): string {
@@ -25,10 +25,13 @@ function alarm(trigger: string, description: string): string[] {
   ]
 }
 
-export function buildIcs(payment: Payment): string {
-  const isDocument = payment.category === 'sigorta'
-  const summary = `${payment.name} — ${formatAmount(payment.amount).replace(/ AZN$/, '')} AZN`
-  const description = `PayPulse ödəniş xatırlatması — ${CATEGORIES[payment.category].label}`
+export function buildIcs(
+  payment: Payment,
+  locale: 'az' | 'en' | 'ru',
+  copy: { description: string; oneDay: string; sevenDays: string },
+): string {
+  const isDocument = payment.category === 'insurance'
+  const summary = `${payment.name} — ${formatNumber(payment.amount, locale)} AZN`
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -41,13 +44,14 @@ export function buildIcs(payment: Payment): string {
     `DTSTART;VALUE=DATE:${payment.nextDate.replace(/-/g, '')}`,
     `DTEND;VALUE=DATE:${addDay(payment.nextDate)}`,
     `SUMMARY:${escapeIcsText(summary)}`,
-    `DESCRIPTION:${escapeIcsText(description)}`,
+    `DESCRIPTION:${escapeIcsText(copy.description)}`,
   ]
 
+  if (payment.repeat === 'weekly') lines.push('RRULE:FREQ=WEEKLY')
   if (payment.repeat === 'monthly') lines.push('RRULE:FREQ=MONTHLY')
   if (payment.repeat === 'yearly') lines.push('RRULE:FREQ=YEARLY')
-  lines.push(...alarm('-P1D', `${payment.name} ödənişinə 1 gün qalıb.`))
-  if (isDocument) lines.push(...alarm('-P7D', `${payment.name} son tarixinə 7 gün qalıb.`))
+  lines.push(...alarm('-P1D', copy.oneDay))
+  if (isDocument) lines.push(...alarm('-P7D', copy.sevenDays))
   lines.push('END:VEVENT', 'END:VCALENDAR')
 
   return `${lines.join('\r\n')}\r\n`

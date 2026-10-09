@@ -19,6 +19,8 @@ import { RadarSection } from './radar-section'
 import { WeeklySummary } from './weekly-summary'
 import { WhatIfSimulator } from './what-if-simulator'
 import { paymentNameKey } from '@/lib/payment-name'
+import { usePublishChatData } from '@/components/chat/chat-data-context'
+import { migrateSavedPayments } from '@/lib/payment-migration'
 
 const PAYMENTS_STORAGE_KEY = 'paypulse:payments'
 
@@ -26,6 +28,7 @@ export function Dashboard() {
   const t = useTranslations()
   const today = useToday()
   const [payments, setPayments] = useState<Payment[]>(mockPayments)
+  usePublishChatData(payments, today)
   const [paymentsLoaded, setPaymentsLoaded] = useState(false)
   const skipNextStorageWrite = useRef(false)
   const insights = useMemo(() => buildRadarInsights(payments, today), [payments, today])
@@ -44,8 +47,9 @@ export function Dashboard() {
       const stored = window.localStorage.getItem(PAYMENTS_STORAGE_KEY)
       if (stored) {
         const parsed: unknown = JSON.parse(stored)
-        if (Array.isArray(parsed)) {
-          setPayments(parsed as Payment[])
+        const migrated = migrateSavedPayments(parsed)
+        if (migrated) {
+          setPayments(migrated)
           restored = true
         }
       }

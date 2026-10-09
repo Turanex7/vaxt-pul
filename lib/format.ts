@@ -1,40 +1,52 @@
 import type { CategoryId, Payment, Repeat } from './mock-data'
 
-export const MONTHS_NOMINATIVE = [
-  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun',
-  'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr',
-]
+export const LOCALE_TAGS = { az: 'az-AZ', en: 'en-US', ru: 'ru-RU' } as const
+export const TIME_ZONE = 'Asia/Baku'
 
-export const MONTHS_LOWER = MONTHS_NOMINATIVE.map((m) => m.toLowerCase())
-
-export const WEEKDAYS_SHORT = ['B.e', 'Ç.a', 'Ç', 'C.a', 'C', 'Ş', 'B']
-
-export const CATEGORIES: Record<CategoryId, { label: string; color: string }> = {
-  abune: { label: 'Abunələr', color: 'var(--chart-1)' },
-  telekom: { label: 'Telekom', color: 'var(--chart-2)' },
-  kommunal: { label: 'Kommunal', color: 'var(--chart-3)' },
-  kredit: { label: 'Kredit', color: 'var(--chart-4)' },
-  sigorta: { label: 'Sığorta və sənədlər', color: 'var(--chart-5)' },
-  muqavile: { label: 'Müqavilələr', color: 'var(--chart-6)' },
+export const CATEGORIES: Record<CategoryId, { color: string }> = {
+  subscriptions: { color: 'var(--chart-1)' },
+  telecom: { color: 'var(--chart-2)' },
+  utilities: { color: 'var(--chart-3)' },
+  loans: { color: 'var(--chart-4)' },
+  insurance: { color: 'var(--chart-5)' },
+  contracts: { color: 'var(--chart-6)' },
 }
 
 export const CATEGORY_IDS = Object.keys(CATEGORIES) as CategoryId[]
+export const REPEAT_IDS: Repeat[] = ['weekly', 'monthly', 'yearly', 'once']
 
-export const REPEAT_LABELS: Record<Repeat, string> = {
-  monthly: 'Aylıq',
-  yearly: 'İllik',
-  once: 'Birdəfəlik',
+export type LocalizedMonthNames = {
+  standalone: Record<string, string>
+  inDate: Record<string, string>
 }
 
-export function formatAmount(value: number, locale = 'az'): string {
-  const [integerPart, fractionPart] = Number.isInteger(value)
-    ? [String(value), '']
-    : value.toFixed(2).split('.')
-  const separator = locale === 'en' ? ',' : ' '
-  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, separator)
+export function formatAmount(value: number, locale: keyof typeof LOCALE_TAGS = 'az'): string {
+  const amount = formatNumber(value, locale)
+  return locale === 'en' ? `AZN ${amount}` : `${amount} AZN`
+}
+
+export function formatNumber(value: number, locale: keyof typeof LOCALE_TAGS = 'az'): string {
+  const decimals = Number.isInteger(value) ? 0 : 2
   const decimalSeparator = locale === 'en' ? '.' : ','
-  const formatted = fractionPart && fractionPart !== '00' ? `${grouped}${decimalSeparator}${fractionPart}` : grouped
-  return locale === 'en' ? `AZN ${formatted}` : `${formatted} AZN`
+  const groupingSeparator = locale === 'en' ? ',' : ' '
+  const localizedParts = new Intl.NumberFormat(LOCALE_TAGS[locale], {
+    useGrouping: true,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: 2,
+  }).formatToParts(value)
+  const decimalIsLocalized = decimals === 0 || localizedParts.some((part) => part.type === 'decimal' && part.value === decimalSeparator)
+  const groupingIsLocalized = Math.abs(value) < 1000 || localizedParts
+    .filter((part) => part.type === 'group')
+    .every((part) => locale === 'en' ? part.value === ',' : /^\s+$/.test(part.value))
+  if (decimalIsLocalized && groupingIsLocalized) {
+    return localizedParts.map((part) => part.type === 'group' ? groupingSeparator : part.value).join('')
+  }
+
+  const fixed = Math.abs(value).toFixed(2)
+  const [integerPart, fractionPart] = fixed.split('.')
+  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, groupingSeparator)
+  const sign = value < 0 ? '-' : ''
+  return `${sign}${grouped}${fractionPart === '00' ? '' : `${decimalSeparator}${fractionPart}`}`
 }
 
 export function parseISO(iso: string): Date {
@@ -50,14 +62,66 @@ export function toISO(date: Date): string {
 }
 
 export function startOfToday(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  return parseISO(`${value.year}-${value.month}-${value.day}`)
 }
 
-export function formatDayMonth(date: Date | string): string {
-  const d = typeof date === 'string' ? parseISO(date) : date
-  return `${d.getDate()} ${MONTHS_LOWER[d.getMonth()]}`
+export function formatDayMonth(date: Date | string, locale: keyof typeof LOCALE_TAGS = 'az'): string {
+  return formatCalendarDate(date, locale, { day: 'numeric', month: 'long' })
+}
+
+export function formatCalendarDate(
+  value: Date | string,
+  locale: keyof typeof LOCALE_TAGS,
+  options: Intl.DateTimeFormatOptions,
+  monthNames?: LocalizedMonthNames,
+): string {
+  const date = typeof value === 'string' ? value : toISO(value)
+  const [year, month, day] = date.split('-').map(Number)
+  if (monthNames && options.month === 'long') {
+    const key = String(month).padStart(2, '0')
+    const monthName = (options.day ? monthNames.inDate : monthNames.standalone)[key]
+    const dayPart = options.day ? String(day) : ''
+    const yearPart = options.year ? String(year) : ''
+    const datePart = locale === 'en'
+      ? [monthName, dayPart].filter(Boolean).join(' ')
+      : [dayPart, monthName].filter(Boolean).join(' ')
+    return [datePart, yearPart].filter(Boolean).join(' ')
+  }
+  const stableDate = new Date(Date.UTC(year, month - 1, day, 12))
+  return new Intl.DateTimeFormat(LOCALE_TAGS[locale], { ...options, timeZone: TIME_ZONE }).format(stableDate)
+}
+
+export function formatMonthYear(value: Date, locale: keyof typeof LOCALE_TAGS, monthNames?: LocalizedMonthNames): string {
+  if (monthNames) {
+    const month = monthNames.standalone[String(value.getMonth() + 1).padStart(2, '0')]
+    return `${month} ${value.getFullYear()}`
+  }
+  const date = toISO(value)
+  const month = formatCalendarDate(date, locale, { month: 'long' })
+  const year = String(value.getFullYear())
+  return `${month.slice(0, 1).toUpperCase()}${month.slice(1)} ${year}`
+}
+
+export function getLocalizedMonthAliases(): Array<{ month: number; aliases: string[] }> {
+  const locales = Object.keys(LOCALE_TAGS) as Array<keyof typeof LOCALE_TAGS>
+  return Array.from({ length: 12 }, (_, month) => {
+    const date = new Date(Date.UTC(2026, month, 1, 12))
+    const aliases = locales.flatMap((locale) => {
+      const formatter = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { month: 'long', timeZone: TIME_ZONE })
+      const standalone = formatter.format(date).toLowerCase()
+      const genitive = new Intl.DateTimeFormat(LOCALE_TAGS[locale], { day: 'numeric', month: 'long', timeZone: TIME_ZONE })
+        .formatToParts(date).find((part) => part.type === 'month')?.value.toLowerCase() ?? ''
+      return [standalone, genitive]
+    })
+    return { month, aliases: [...new Set(aliases.filter(Boolean))] }
+  })
 }
 
 export function daysUntil(date: Date | string, today = startOfToday()): number {
@@ -67,15 +131,9 @@ export function daysUntil(date: Date | string, today = startOfToday()): number {
   return Math.round((d.getTime() - start.getTime()) / 86_400_000)
 }
 
-export function daysLeftLabel(days: number): string {
-  if (days < 0) return `${Math.abs(days)} gün gecikib`
-  if (days === 0) return 'Bu gün'
-  if (days === 1) return 'Sabah'
-  return `${days} gün qalıb`
-}
-
 export function monthlyEquivalent(p: Pick<Payment, 'amount' | 'repeat'>): number {
   if (p.repeat === 'yearly') return p.amount / 12
+  if (p.repeat === 'weekly') return p.amount * 52 / 12
   if (p.repeat === 'once') return 0
   return p.amount
 }
@@ -90,6 +148,10 @@ function addMonthsClamped(base: Date, months: number): Date {
 
 export function nextPaymentPeriod(nextDate: string, repeat: Repeat): string {
   const date = parseISO(nextDate)
+  if (repeat === 'weekly') {
+    date.setDate(date.getDate() + 7)
+    return toISO(date)
+  }
   return toISO(addMonthsClamped(date, repeat === 'yearly' ? 12 : 1))
 }
 
@@ -103,7 +165,7 @@ export function getOccurrences(payments: Payment[], start: Date, end: Date): Occ
   const result: Occurrence[] = []
   for (const payment of payments) {
     const base = parseISO(payment.nextDate)
-    const step = payment.repeat === 'monthly' ? 1 : payment.repeat === 'yearly' ? 12 : 0
+    const step = payment.repeat === 'weekly' ? 7 : payment.repeat === 'monthly' ? 1 : payment.repeat === 'yearly' ? 12 : 0
     if (step === 0) {
       if (base >= start && base <= end) result.push({ payment, date: base })
       continue
@@ -113,7 +175,9 @@ export function getOccurrences(payments: Payment[], start: Date, end: Date): Occ
       : Infinity
     for (let k = 0; k <= 36; k++) {
       if (k >= remaining) break
-      const date = addMonthsClamped(base, k * step)
+      const date = payment.repeat === 'weekly'
+        ? new Date(base.getFullYear(), base.getMonth(), base.getDate() + k * step)
+        : addMonthsClamped(base, k * step)
       if (date > end) break
       if (date >= start) result.push({ payment, date })
     }

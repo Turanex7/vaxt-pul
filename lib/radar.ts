@@ -11,6 +11,7 @@ const WEEK_LOAD_LARGE_AZN = 200
 function yearlyAmount(p: Payment): number {
   if (p.repeat === 'yearly') return p.amount
   if (p.repeat === 'once') return p.amount
+  if (p.repeat === 'weekly') return p.amount * 52
   return p.amount * 12
 }
 
@@ -31,7 +32,7 @@ export function buildRadarInsights(payments: Payment[], today: Date): Insight[] 
 function deadlineInsights(payments: Payment[], today: Date): Insight[] {
   const deadlines = payments
     .map((p) => ({ p, days: daysUntil(p.nextDate, today) }))
-    .filter(({ p, days }) => (p.category === 'sigorta' || p.isDeadline) && days >= 0 && days <= 14)
+    .filter(({ p, days }) => (p.category === 'insurance' || p.isDeadline) && days >= 0 && days <= 14)
     .sort((a, b) => a.days - b.days)
     .map(({ p, days }) => {
       return {
@@ -63,10 +64,10 @@ function deadlineInsights(payments: Payment[], today: Date): Insight[] {
 }
 
 function duplicateSubscriptionInsights(payments: Payment[]): Insight[] {
-  const abune = payments.filter((p) => p.category === 'abune')
+  const subscriptions = payments.filter((p) => p.category === 'subscriptions')
   const items = [
-    abune.find((p) => /spotify/i.test(paymentLabel(p))),
-    abune.find((p) => /youtube/i.test(paymentLabel(p)) && /premium/i.test(paymentLabel(p)) && !/music/i.test(paymentLabel(p))),
+    subscriptions.find((p) => /spotify/i.test(paymentLabel(p))),
+    subscriptions.find((p) => /youtube/i.test(paymentLabel(p)) && /premium/i.test(paymentLabel(p)) && !/music/i.test(paymentLabel(p))),
   ].filter((p): p is Payment => Boolean(p))
   if (items.length < 2) return []
 

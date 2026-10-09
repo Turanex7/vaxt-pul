@@ -1,12 +1,12 @@
 export type CategoryId =
-  | 'abune'
-  | 'telekom'
-  | 'kommunal'
-  | 'kredit'
-  | 'sigorta'
-  | 'muqavile'
+  | 'subscriptions'
+  | 'telecom'
+  | 'utilities'
+  | 'loans'
+  | 'insurance'
+  | 'contracts'
 
-export type Repeat = 'monthly' | 'yearly' | 'once'
+export type Repeat = 'weekly' | 'monthly' | 'yearly' | 'once'
 
 export interface Installment {
   paid: number
@@ -16,6 +16,9 @@ export interface Installment {
 export interface Payment {
   id: string
   name: string
+  /** Translation key for bundled demo data; user-entered names remain plain text. */
+  nameKey?: string
+  providerKey?: string
   category: CategoryId
   amount: number
   /** ISO date, YYYY-MM-DD */
@@ -47,10 +50,8 @@ export interface Insight {
   id: string
   kind: InsightKind
   severity: InsightSeverity
-  title?: string
-  description?: string
-  titleKey?: string
-  descriptionKey?: string
+  titleKey: string
+  descriptionKey: string
   values?: Record<string, string | number>
   relatedPaymentIds?: string[]
   amount?: number
@@ -68,67 +69,23 @@ export function createMockPayments(today: Date): Payment[] {
   }
 
   return [
-  { id: 'netflix', name: 'Netflix', provider: 'Netflix', category: 'abune', amount: 9.99, nextDate: isoFromToday(2), repeat: 'monthly', autoRenew: true },
-  { id: 'youtube', name: 'YouTube Premium', provider: 'Google', category: 'abune', amount: 11.99, nextDate: isoFromToday(16), repeat: 'monthly', autoRenew: true },
-  { id: 'spotify', name: 'Spotify Premium', provider: 'Spotify', category: 'abune', amount: 9.99, nextDate: isoFromToday(21), repeat: 'monthly', autoRenew: true },
-  { id: 'azercell-tarif', name: 'Azercell tarif', provider: 'Azercell', category: 'telekom', amount: 15, nextDate: isoFromToday(4), repeat: 'monthly' },
-  { id: 'azercell-paket', name: 'Azercell əlavə internet paketi', provider: 'Azercell', category: 'telekom', amount: 5, nextDate: isoFromToday(18), repeat: 'monthly', autoRenew: true },
-  { id: 'internet', name: 'Ev interneti', provider: 'CityNet', category: 'telekom', amount: 20, nextDate: isoFromToday(9), repeat: 'monthly' },
-  { id: 'elektrik', name: 'Elektrik', provider: 'Azərişıq', category: 'kommunal', amount: 37.8, previousAmount: 28, nextDate: isoFromToday(11), repeat: 'monthly' },
-  { id: 'qaz', name: 'Qaz', provider: 'Azəriqaz', category: 'kommunal', amount: 22, nextDate: isoFromToday(13), repeat: 'monthly' },
-  { id: 'su', name: 'Su', provider: 'Azərsu', category: 'kommunal', amount: 8, nextDate: isoFromToday(13), repeat: 'monthly' },
-  { id: 'kredit', name: 'Bank krediti', provider: 'Kapital Bank', category: 'kredit', amount: 210, nextDate: isoFromToday(6), repeat: 'monthly' },
-  { id: 'taksit', name: 'Taksit: telefon', provider: 'Birmarket', category: 'kredit', amount: 85, nextDate: isoFromToday(24), repeat: 'monthly', installment: { paid: 6, total: 12 } },
-  { id: 'sigorta', name: 'Avtomobil sığortası', provider: 'Paşa Sığorta', category: 'sigorta', amount: 180, nextDate: isoFromToday(12), repeat: 'yearly', isDeadline: true },
-  { id: 'texbaxis', name: 'Texniki baxış', provider: 'DYP', category: 'sigorta', amount: 30, nextDate: isoFromToday(5), repeat: 'yearly', isDeadline: true },
-  { id: 'idman', name: 'İdman zalı üzvlüyü', provider: 'Sport Life', category: 'muqavile', amount: 60, nextDate: isoFromToday(27), repeat: 'monthly', autoRenew: true },
-  { id: 'kiraye', name: 'Kirayə', provider: 'Ev sahibi', category: 'muqavile', amount: 400, nextDate: isoFromToday(28), repeat: 'monthly' },
+  { id: 'netflix', nameKey: 'netflix', providerKey: 'netflix', name: 'Netflix', provider: 'Netflix', category: 'subscriptions', amount: 9.99, nextDate: isoFromToday(2), repeat: 'monthly', autoRenew: true },
+  { id: 'youtube', nameKey: 'youtube', providerKey: 'youtube', name: 'YouTube Premium', provider: 'Google', category: 'subscriptions', amount: 11.99, nextDate: isoFromToday(16), repeat: 'monthly', autoRenew: true },
+  { id: 'spotify', nameKey: 'spotify', providerKey: 'spotify', name: 'Spotify Premium', provider: 'Spotify', category: 'subscriptions', amount: 9.99, nextDate: isoFromToday(21), repeat: 'monthly', autoRenew: true },
+  { id: 'azercell-tarif', nameKey: 'azercellTariff', providerKey: 'azercell', name: 'Azercell tarif', provider: 'Azercell', category: 'telecom', amount: 15, nextDate: isoFromToday(4), repeat: 'monthly' },
+  { id: 'azercell-paket', nameKey: 'azercellPack', providerKey: 'azercell', name: 'Azercell əlavə internet paketi', provider: 'Azercell', category: 'telecom', amount: 5, nextDate: isoFromToday(18), repeat: 'monthly', autoRenew: true },
+  { id: 'internet', nameKey: 'internet', providerKey: 'internet', name: 'Ev interneti', provider: 'CityNet', category: 'telecom', amount: 20, nextDate: isoFromToday(9), repeat: 'monthly' },
+  { id: 'elektrik', nameKey: 'electricity', providerKey: 'electricity', name: 'Elektrik', provider: 'Azərişıq', category: 'utilities', amount: 37.8, previousAmount: 28, nextDate: isoFromToday(11), repeat: 'monthly' },
+  { id: 'qaz', nameKey: 'gas', providerKey: 'gas', name: 'Qaz', provider: 'Azəriqaz', category: 'utilities', amount: 22, nextDate: isoFromToday(13), repeat: 'monthly' },
+  { id: 'su', nameKey: 'water', providerKey: 'water', name: 'Su', provider: 'Azərsu', category: 'utilities', amount: 8, nextDate: isoFromToday(13), repeat: 'monthly' },
+  { id: 'kredit', nameKey: 'loan', providerKey: 'loan', name: 'Bank krediti', provider: 'Kapital Bank', category: 'loans', amount: 210, nextDate: isoFromToday(6), repeat: 'monthly' },
+  { id: 'taksit', nameKey: 'installment', providerKey: 'installment', name: 'Taksit: telefon', provider: 'Birmarket', category: 'loans', amount: 85, nextDate: isoFromToday(24), repeat: 'monthly', installment: { paid: 6, total: 12 } },
+  { id: 'sigorta', nameKey: 'insurance', providerKey: 'insurance', name: 'Avtomobil sığortası', provider: 'Paşa Sığorta', category: 'insurance', amount: 180, nextDate: isoFromToday(12), repeat: 'yearly', isDeadline: true },
+  { id: 'texbaxis', nameKey: 'inspection', providerKey: 'inspection', name: 'Texniki baxış', provider: 'DYP', category: 'insurance', amount: 30, nextDate: isoFromToday(5), repeat: 'yearly', isDeadline: true },
+  { id: 'idman', nameKey: 'gym', providerKey: 'gym', name: 'İdman zalı üzvlüyü', provider: 'Sport Life', category: 'contracts', amount: 60, nextDate: isoFromToday(27), repeat: 'monthly', autoRenew: true },
+  { id: 'kiraye', nameKey: 'rent', providerKey: 'rent', name: 'Kirayə', provider: 'Ev sahibi', category: 'contracts', amount: 400, nextDate: isoFromToday(28), repeat: 'monthly' },
   ]
 }
 
 // Fixed dates make the server render and the first client render identical.
 export const mockPayments: Payment[] = createMockPayments(new Date(2026, 9, 9))
-
-export const mockInsights: Insight[] = [
-  {
-    id: 'ins-sigorta',
-    kind: 'deadline',
-    severity: 'urgent',
-    title: 'Avtomobil sığortası 12 gündən sonra bitir',
-    description: 'Vaxtında yeniləməsən, cərimə riski var. Təxmini məbləğ 180 AZN.',
-    relatedPaymentIds: ['sigorta'],
-  },
-  {
-    id: 'ins-duplicate',
-    kind: 'duplicate',
-    severity: 'saving',
-    title: 'Bu 2 abunə təkrarlanır',
-    description: 'YouTube Premium musiqini də əhatə edir. Spotify-ı dayandırsan, ildə 120 AZN qənaət.',
-    relatedPaymentIds: ['youtube', 'spotify'],
-    amount: 120,
-  },
-  {
-    id: 'ins-spike',
-    kind: 'spike',
-    severity: 'warning',
-    title: 'Elektrik xərci 35% artıb',
-    description: 'Əvvəlki ay 28 AZN idi, bu ay 37.80 AZN gözlənilir.',
-    relatedPaymentIds: ['elektrik'],
-  },
-  {
-    id: 'ins-unknown',
-    kind: 'unknown-charge',
-    severity: 'urgent',
-    title: 'Tanımadığımız ödəniş tapıldı: 14.90 AZN',
-    description: '«PAYMNT*DIGI SRV» adlı kartdan çıxılma. Bu sənin ödənişindir?',
-    amount: 14.9,
-  },
-  {
-    id: 'ins-forecast',
-    kind: 'forecast',
-    severity: 'warning',
-    title: 'Dekabrda 3 böyük ödəniş eyni həftəyə düşür',
-    description: 'Kirayə, kredit və sığorta üçün həmin həftə 620 AZN lazım olacaq.',
-    amount: 620,
-  },
-]

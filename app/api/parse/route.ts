@@ -1,41 +1,29 @@
 import { generateGeminiJson, type GeminiPart } from '@/lib/gemini'
 import { NextResponse } from 'next/server'
 
-const PARSE_PROMPT = `Sən ödəniş çıxarışı köməkçisisən. Verilən mətndən və/və ya qəbz şəklindən BÜTÜN ödənişləri çıxar.
-
-Hər ödəniş üçün yalnız bu sahələri doldur:
-- name: YALNIZ xidmətin və ya şirkətin qısa adı (məs. "Sport Life Gym", "Netflix", "Avtomobil sığortası"). Məbləğ, tarix, valyuta (AZN, ₼, manat) və artıq sözlər name-ə DAXİL OLMASIN.
-- amount: məbləğ, yalnız rəqəm, AZN
-- date: növbəti ödəniş tarixi, mütləq YYYY-MM-DD. Mətndəki tarix adətən ödənişin edildiyi gündür; təkrarlanan ödənişlər üçün növbəti ödəniş tarixini hesabla. Tarix yoxdursa bu günün tarixindən təxmin et.
-- category: YALNIZ bunlardan biri: "Abunələr", "Telekom", "Kommunal", "Kredit", "Sığorta və sənədlər", "Müqavilələr"
-- repeat: YALNIZ bunlardan biri: "aylıq", "illik", "birdəfəlik"
-
-Kateqoriya qaydaları:
-- Müqavilələr: idman zalı, gym, kirayə, üzvlük
-- Abunələr: Netflix, Spotify, YouTube
-- Telekom: Azercell, internet, mobil tarif
-- Kommunal: işıq, qaz, su
-- Kredit: bank krediti, taksit
-- Sığorta və sənədlər: sığorta, texniki baxış
-
-Nümunə:
-Mətn: "Sport Life Gym 60azn 9 oktyabr 2026"
-Cavab: {"items":[{"name":"Sport Life Gym","amount":60,"date":"2026-10-09","category":"Müqavilələr","repeat":"aylıq"}]}
-
-Cavabı YALNIZ JSON obyekti kimi ver, başqa mətn yox:
-{ "items": [ { "name": "", "amount": 0, "date": "YYYY-MM-DD", "category": "", "repeat": "" } ] }
-
-Ödəniş tapılmasa: { "items": [] }`
+function parsePrompt(locale: 'az' | 'en' | 'ru') {
+  const language = locale === 'az' ? 'Azərbaycan dili' : locale === 'en' ? 'English' : 'Русский'
+  return `You extract all payment records from the supplied text and/or receipt image. Interpret dates and recurrence phrases in any language.
+Reply only in ${locale} (${language}) when writing a payment name; preserve the service/company's original name when it is provided.
+For each item return only these fields: name (short service/company name), amount (number in AZN), date (next date as YYYY-MM-DD), category, repeat.
+Never include amount, date, currency, or extra words in name. Use category keys only: subscriptions, telecom, utilities, loans, insurance, contracts.
+Use repeat keys only: weekly, monthly, yearly, once.
+Category guidance: gym/rent/membership=contracts; Netflix/Spotify/YouTube=subscriptions; mobile/internet=telecom; electricity/gas/water=utilities; bank/instalment=loans; insurance/inspection=insurance.
+The date is the next due date. If recurrence is indicated, choose the next occurrence. If no date is supplied, use today's date.
+Return JSON only, with no prose: {"items":[{"name":"","amount":0,"date":"YYYY-MM-DD","category":"contracts","repeat":"monthly"}]}. If nothing is found, return {"items":[]}.`
+}
 
 interface ParseBody {
   text?: string
   imageBase64?: string
   mimeType?: string
+  locale?: string
 }
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ParseBody
+    const locale = body.locale === 'en' || body.locale === 'ru' ? body.locale : 'az'
     const text = typeof body.text === 'string' ? body.text.trim() : ''
     const imageBase64 =
       typeof body.imageBase64 === 'string' ? body.imageBase64.replace(/^data:[^;]+;base64,/, '') : ''
@@ -45,7 +33,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'text or imageBase64 is required' }, { status: 400 })
     }
 
-    const parts: GeminiPart[] = [{ text: PARSE_PROMPT }]
+    const parts: GeminiPart[] = [{ text: parsePrompt(locale) }]
     if (text) {
       parts.push({ text: `İstifadəçi mətni:\n${text}` })
     }

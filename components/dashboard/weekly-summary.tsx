@@ -14,6 +14,7 @@ import { Panel } from './panel'
 
 export function WeeklySummary({ payments, today }: { payments: Payment[]; today: Date }) {
   const t = useTranslations('weekly')
+  const categories = useTranslations('categories')
   const locale = useLocale() as 'az' | 'en' | 'ru'
   const { amount } = useLocalizedFormat()
   const paymentName = usePaymentName()
@@ -23,12 +24,19 @@ export function WeeklySummary({ payments, today }: { payments: Payment[]; today:
     return () => window.clearTimeout(timer)
   }, [payments])
 
-  const key = useMemo(() => ['weekly-summary', toISO(today), JSON.stringify(debouncedPayments)], [debouncedPayments, today])
+  const key = useMemo(() => ['weekly-summary', locale, toISO(today), JSON.stringify(debouncedPayments)], [debouncedPayments, locale, today])
   const { data, error, mutate } = useSWR(
     key,
-    () => getWeeklySummary(debouncedPayments, today, locale, paymentName),
+    () => getWeeklySummary(
+      debouncedPayments,
+      today,
+      (key, values) => t(key as 'headline' | 'paymentCount' | 'deadlineCount' | 'budget' | 'budgetWithDeadline' | 'empty', values),
+      locale,
+      paymentName,
+      (payment) => categories(payment.category),
+    ),
     {
-      keepPreviousData: true,
+      keepPreviousData: false,
       revalidateOnFocus: false,
       errorRetryCount: 2,
       onError: (requestError) => console.error('[weekly summary] request failed', requestError),

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { generateCancelHelp, getLastAiStatus } from '@/lib/api'
-import { usePaymentName } from '@/hooks/use-payment-name'
+import { usePaymentName, usePaymentProvider } from '@/hooks/use-payment-name'
 import type { Payment } from '@/lib/mock-data'
 
 interface CancelAssistantDialogProps {
@@ -32,8 +32,10 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
   const toastT = useTranslations('toast')
   const locale = useLocale() as 'az' | 'en' | 'ru'
   const paymentName = usePaymentName()
-  const { data, isLoading } = useSWR(['cancel-help', payment.id], async () => ({
-    help: await generateCancelHelp(payment, locale, paymentName(payment)),
+  const paymentProvider = usePaymentProvider()
+  const categories = useTranslations('categories')
+  const { data, isLoading } = useSWR(['cancel-help', locale, payment.id], async () => ({
+    help: await generateCancelHelp(payment, locale, paymentName(payment), paymentProvider(payment) ?? paymentName(payment), categories(payment.category)),
     usedFallback: getLastAiStatus() === 'fallback',
   }), {
     revalidateOnFocus: false,
@@ -57,7 +59,7 @@ function CancelHelpBody({ payment }: { payment: Payment }) {
       <DialogHeader>
         <DialogTitle className="text-2xl font-semibold">{t('title')}</DialogTitle>
         <DialogDescription className="text-base">
-          {t('description', { name: paymentName(payment), provider: payment.provider ?? t('service') })}
+          {t('description', { name: paymentName(payment), provider: paymentProvider(payment) ?? t('service') })}
         </DialogDescription>
       </DialogHeader>
 

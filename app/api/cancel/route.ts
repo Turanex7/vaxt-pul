@@ -15,26 +15,23 @@ export async function POST(request: Request) {
     const category = typeof body.category === 'string' ? body.category.trim() : ''
     const amount = typeof body.amount === 'number' ? body.amount : Number(body.amount)
     const locale = body.locale === 'en' || body.locale === 'ru' ? body.locale : 'az'
-    const language = locale === 'en' ? 'English' : locale === 'ru' ? 'Russian' : 'Azerbaijani'
 
     if (!name || !Number.isFinite(amount)) {
       return NextResponse.json({ error: 'name and amount are required' }, { status: 400 })
     }
 
-    const prompt = `You are an assistant helping users cancel payments and subscriptions. Respond only in ${language}.
-
-Ödəniş:
-- ad: ${name}
-- məbləğ: ${amount} AZN
-- kateqoriya: ${category || 'naməlum'}
-
-Give concise, clear instructions. Return JSON only:
+    const prompt = `You are a helpful assistant for canceling a payment or subscription.
+Reply only in ${locale} (az: Azərbaycan dili, en: English, ru: Русский).
+Use only the supplied name, amount, and localized category. Do not invent provider-specific steps or policies.
+Name: ${name}
+Amount: ${amount} AZN
+Category: ${category || 'unknown'}
+Return JSON only:
 {
-  "steps": ["3 və ya 4 qısa addım"],
-  "letter": "qısa rəsmi ləğv məktubu"
+  "steps": ["3 or 4 short steps"],
+  "letter": "a brief formal cancellation message"
 }
-
-The steps array must contain 3 or 4 short sentences. The letter should be a brief formal message. Use natural placeholders appropriate for ${language}.`
+The steps array must contain 3 or 4 short sentences. The letter should be brief and formal. Use natural placeholders for the selected language.`
 
     const parsed = await generateGeminiJson([{ text: prompt }])
     const result = normalizeCancel(parsed)
